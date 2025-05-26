@@ -10,7 +10,7 @@ const router = express.Router();
 /**
  * ✅ Issue a new vehicle ticket
  */
-router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin', 'tiketing']), async (req, res) => {
   const { vehicleNumber, vehicleType, ticketPrice } = req.body;
 
   if (!vehicleNumber || !vehicleType || !ticketPrice) {
@@ -120,5 +120,25 @@ router.get('/monthly-income', authenticateUser, authorizeRole(['admin', 'superad
     res.status(500).json({ message: 'Error fetching monthly income data', error: error.message });
   }
 });
+
+/**
+ * ❌ Delete a vehicle ticket by ID
+ */
+router.delete('/:id', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+  try {
+    const ticket = await VehicleTicket.findByPk(req.params.id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    await ticket.destroy();
+
+    res.status(200).json({ message: 'Ticket deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting ticket', error: error.message });
+  }
+});
+
 
 module.exports = router;

@@ -10,13 +10,12 @@ const router = express.Router();
  * 📝 Register a New Admin (Super Admin Only)
  * Route: POST /api/admin/register
  * Access: Super Admin
- */
-router.post("/register", authenticateUser, authorizeRole(["superadmin", "admin"]), async (req, res) => {
+ */router.post("/register", authenticateUser, authorizeRole(["superadmin"]), async (req, res) => {
   const { username, email, password, role } = req.body;
 
   try {
     // Validate role
-    if (!["superadmin", "admin"].includes(role)) {
+    if (!["superadmin", "admin", "tiketing", "editor", "manager"].includes(role)) {
       return res.status(400).json({ message: "Invalid role!" });
     }
 
@@ -24,17 +23,35 @@ router.post("/register", authenticateUser, authorizeRole(["superadmin", "admin"]
     const existingUser = await Admin.findOne({ where: { email } });
     if (existingUser) return res.status(400).json({ message: "Admin already exists" });
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create admin
-    const newAdmin = await Admin.create({ username, email, password: hashedPassword, role });
+    // ✅ Let Sequelize handle hashing via beforeCreate
+    const newAdmin = await Admin.create({ username, email, password, role });
 
     res.status(201).json({ message: "Admin registered successfully!", admin: newAdmin });
   } catch (err) {
     console.error("Admin Registration Error:", err);
     res.status(500).json({ message: "Error registering admin", error: err.message });
-    
+  }
+});
+
+/**
+ * 🔐 Verify Admin Credentials (Re-authentication for sensitive actions)
+ * Route: POST /api/admin/verify
+ * Access: Logged-in Admins (or can be public if not requiring token)
+ */
+router.post("/verify", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const admin = await Admin.findOne({ where: { email } });
+    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+
+    res.status(200).json({ message: "Verification successful" });
+  } catch (err) {
+    console.error("Credential Verification Error:", err);
+    res.status(500).json({ message: "Error verifying credentials", error: err.message });
   }
 });
 
@@ -102,7 +119,7 @@ router.put("/change-password", authenticateUser, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    // Find admin
+    // Find admin by ID
     const admin = await Admin.findByPk(req.user.adminId);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
@@ -110,9 +127,10 @@ router.put("/change-password", authenticateUser, async (req, res) => {
     const isMatch = await bcrypt.compare(currentPassword, admin.password);
     if (!isMatch) return res.status(401).json({ message: "Current password is incorrect" });
 
-    // Hash and update new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    admin.password = hashedPassword;
+    // ✅ Set new password (it will be hashed via model's beforeUpdate hook)
+    admin.password = newPassword;
+
+    // Save the updated admin
     await admin.save();
 
     res.status(200).json({ message: "Password updated successfully" });
@@ -145,7 +163,7 @@ router.get("/admin", authenticateUser, authorizeRole(["admin", "superadmin"]), (
  * Route: GET /api/admin/list
  * Access: Super Admin
  */
-router.get("/list", authenticateUser, authorizeRole(["admin", "superadmin"]), async (req, res) => {
+router.get("/list", authenticateUser, authorizeRole(["superadmin"]), async (req, res) => {
   try {
     const admins = await Admin.findAll({
       attributes: { exclude: ["password"] },
@@ -154,6 +172,33 @@ router.get("/list", authenticateUser, authorizeRole(["admin", "superadmin"]), as
   } catch (err) {
     console.error("Error Fetching Admin List:", err);
     res.status(500).json({ message: "Error fetching admin list", error: err.message });
+  }
+});
+
+/**
+ * ❌ Delete an Admin Account by Email (Super Admin Only, cannot delete other Super Admins)
+ * Route: DELETE /api/admin/delete-by-email
+ * Access: Super Admin
+ */
+router.delete("/delete-by-email", authenticateUser, authorizeRole(["superadmin"]), async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const admin = await Admin.findOne({ where: { email } });
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    // Prevent deletion of any superadmin account
+    if (admin.role === "superadmin") {
+      return res.status(403).json({ message: "Cannot delete Super Admin accounts" });
+    }
+
+    await admin.destroy();
+    res.status(200).json({ message: "Admin account deleted successfully" });
+  } catch (err) {
+    console.error("Admin Deletion Error:", err);
+    res.status(500).json({ message: "Error deleting admin", error: err.message });
   }
 });
 

@@ -4,7 +4,7 @@ const Shop = require('./Shop');
 
 const ShopBalance = sequelize.define('ShopBalance', {
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     primaryKey: true,  // ✅ Deletes ShopBalance when Shop is deleted
   },
   balance_amount: {

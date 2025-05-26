@@ -1,8 +1,8 @@
 const { Sequelize } = require('sequelize');
 const Invoice = require('../models/Invoice');
-const Fine = require('../models/Fine'); // Import Fine model
-const AuditTrail = require('../models/AuditTrail'); // Import AuditTrail model
-const { applyFine } = require('../utils/applyFine'); // Import applyFine function
+const Fine = require('../models/Fine');
+const AuditTrail = require('../models/AuditTrail');
+const { applyFine } = require('../utils/applyFine');
 const dayjs = require('dayjs');
 
 /**
@@ -11,61 +11,68 @@ const dayjs = require('dayjs');
  */
 async function applyFineToAllInvoices() {
     try {
-        // Get the threshold date (17 days ago)
         const fineThresholdDate = dayjs().subtract(17, 'days').toDate();
+        console.log(`📅 Fine threshold date is: ${fineThresholdDate}`);
 
-        // Fetch all invoices that are "Unpaid", "Partially Paid", or "Arrest" and older than 17 days
         const invoices = await Invoice.findAll({
             where: {
                 status: { [Sequelize.Op.in]: ['Unpaid', 'Partially Paid', 'Arrest'] },
-                createdAt: { [Sequelize.Op.lte]: fineThresholdDate } // Corrected field name
+                createdAt: { [Sequelize.Op.lte]: fineThresholdDate }
             }
         });
 
-        if (invoices.length === 0) {
+        console.log(`📄 Found ${invoices.length} potentially eligible invoices.`);
+
+        if (!invoices.length) {
             return { success: false, message: "No eligible invoices found for fine application." };
         }
 
-        // Fetch invoices that already have a fine
         const invoiceIds = invoices.map(inv => inv.invoice_id);
-        const finedInvoices = await Fine.findAll({
+
+        const existingFines = await Fine.findAll({
             attributes: ['invoice_id'],
             where: { invoice_id: { [Sequelize.Op.in]: invoiceIds } },
             raw: true
         });
 
-        const finedInvoiceIds = new Set(finedInvoices.map(fine => fine.invoice_id));
+        const finedInvoiceIds = new Set(existingFines.map(f => f.invoice_id));
+        console.log(`💰 ${finedInvoiceIds.size} invoices already have fines.`);
 
-        // Select only invoices that do NOT already have a fine
         const invoicesToFine = invoices.filter(inv => !finedInvoiceIds.has(inv.invoice_id));
+        console.log(`🔍 ${invoicesToFine.length} invoices eligible for fine application.`);
 
-        if (invoicesToFine.length === 0) {
+        if (!invoicesToFine.length) {
             return { success: false, message: "All eligible invoices already have fines." };
         }
 
         let totalFinedInvoices = 0;
+
         for (const invoice of invoicesToFine) {
+            console.log(`⚙️ Applying fine to invoice #${invoice.invoice_id}...`);
             const result = await applyFine(invoice.invoice_id);
+
             if (result.success) {
                 totalFinedInvoices++;
+                console.log(`✅ Fine of ${result.fineAmount} applied to invoice #${invoice.invoice_id}`);
 
-                // Log Audit Trail for fine application
+                // Audit Trail
                 await AuditTrail.create({
                     shop_id: invoice.shop_id,
                     invoice_id: invoice.invoice_id,
                     event_type: 'Fine Applied',
-                    event_description: `Fine applied to invoice #${invoice.invoice_id} due to overdue payment.`,
-                    old_value: null, // No previous fine value
-                    new_value: result.fineAmount, // Fine amount applied
-                    user_actioned: 'System' // Since this is an automated process
+                    event_description: `Fine of ${result.fineAmount} applied to overdue invoice.`,
+                    user_actioned: 'System'
                 });
+            } else {
+                console.warn(`⚠️ Failed to apply fine to invoice #${invoice.invoice_id}: ${result.message}`);
             }
         }
 
         return { success: true, message: `${totalFinedInvoices} invoices fined successfully.` };
+
     } catch (error) {
         console.error("❌ Fine Application Error:", error);
-        return { success: false, message: error.message };
+        return { success: false, message: `Error applying fines: ${error.message}` };
     }
 }
 

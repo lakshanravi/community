@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import ConfirmWrapper from "../../components/ConfirmWrapper";
 import Sidebar from "../../components/Sidebar";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axiosInstance";
 
 const AdminPanel = () => {
@@ -20,8 +22,10 @@ const AdminPanel = () => {
   const [role, setRole] = useState("");
 
   const headers = { Authorization: `Bearer ${token}` };
+  const { name } = useAuth();
 
-  // Decode token to get role
+  console.log("Logged in user:", name, "Role:", role);
+
   useEffect(() => {
     if (token) {
       try {
@@ -90,6 +94,33 @@ const AdminPanel = () => {
     }
   };
 
+  // Delete admin handler
+  const handleDeleteAdmin = async (email, adminRole) => {
+    if (adminRole === "superadmin") {
+      toast.error("Cannot delete Super Admin accounts");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete admin ${email}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await api.delete("/api/admin/delete-by-email", {
+        headers,
+        data: { email },
+      });
+      toast.success(res.data.message);
+      fetchAdmins();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error deleting admin");
+      console.error("Delete Admin Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAdmins();
   }, []);
@@ -100,7 +131,7 @@ const AdminPanel = () => {
       <div className="p-8 w-full overflow-auto">
         <h1 className="text-3xl font-bold mb-6">Admin Management</h1>
 
-        {/* ✅ Register Admin */}
+        {/* Register Admin */}
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">Register New Admin</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -137,18 +168,19 @@ const AdminPanel = () => {
               <option value="manager">Manager</option>
             </select>
           </div>
-          <button
-            onClick={handleRegister}
-            className={`mt-4 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={loading}
-          >
-            {loading ? "Registering..." : "Register Admin"}
-          </button>
+          <ConfirmWrapper onConfirm={handleRegister}>
+            <button
+              className={`mt-4 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={loading}
+            >
+              {loading ? "Registering..." : "Register Admin"}
+            </button>
+          </ConfirmWrapper>
         </div>
 
-        {/* ✅ Change Password */}
+        {/* Change Password */}
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">Change Password</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -171,18 +203,19 @@ const AdminPanel = () => {
               }
             />
           </div>
-          <button
-            onClick={handlePasswordChange}
-            className={`mt-4 w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={loading}
-          >
-            {loading ? "Changing..." : "Change Password"}
-          </button>
+          <ConfirmWrapper onConfirm={handlePasswordChange}>
+            <button
+              className={`mt-4 w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={loading}
+            >
+              {loading ? "Changing..." : "Change Password"}
+            </button>
+          </ConfirmWrapper>
         </div>
 
-        {/* ✅ Admin List */}
+        {/* Admin List */}
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Admin List</h2>
           {admins.length === 0 ? (
@@ -195,6 +228,7 @@ const AdminPanel = () => {
                   <th className="py-2">Username</th>
                   <th className="py-2">Email</th>
                   <th className="py-2">Role</th>
+                  <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,6 +238,22 @@ const AdminPanel = () => {
                     <td className="py-2">{admin.username}</td>
                     <td className="py-2">{admin.email}</td>
                     <td className="py-2">{admin.role}</td>
+                    <td className="py-2">
+                      {role === "superadmin" && (
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.email, admin.role)}
+                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                          disabled={loading || admin.role === "superadmin"}
+                          title={
+                            admin.role === "superadmin"
+                              ? "Cannot delete Super Admin"
+                              : "Delete Admin"
+                          }
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const { authenticateUser, authorizeRole } = require("../middleware/authMiddleware");
 
 // 1. Add or update daily price range for multiple products (bulk)
-router.post('/update-multiple', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.post('/update-multiple', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
   const entries = req.body;
 
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -55,7 +55,7 @@ router.post('/update-multiple', authenticateUser, authorizeRole(['admin', 'super
 });
 
 // 2. Add/update price range for a single product/date
-router.post('/update', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.post('/update', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
   const { product_id, min_price, max_price, date } = req.body;
 
   if (!product_id || min_price == null || max_price == null || !date) {
@@ -90,6 +90,10 @@ router.get('/product/:productId/chart', async (req, res) => {
   try {
     const prices = await Price.findAll({
       where: { product_id: productId },
+      include: {
+        model: Product,
+        attributes: ['name'], // assuming 'name' is the field
+      },
       order: [['date', 'ASC']],
     });
 
@@ -153,7 +157,7 @@ router.get('/product/:productId/date/:date', async (req, res) => {
 });
 
 // 6. Update price range of a product on a specific day
-router.put('/product/:productId/date/:date', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.put('/product/:productId/date/:date', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
   const { productId, date } = req.params;
   const { min_price, max_price } = req.body;
 

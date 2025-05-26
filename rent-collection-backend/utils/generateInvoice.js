@@ -5,15 +5,18 @@ const Vat = require("../models/VAT");
 const AuditTrail = require("../models/AuditTrail");
 const Shop = require("../models/Shop");
 const ShopBalance = require("../models/ShopBalance");
-const Fine = require("../models/Fine");  // Add this line
 
+const Fine = require("../models/Fine");  // Add this line
+const { applyFineToAllInvoices } = require('./applyFineToAllInvoices'); // Import it at the top
 const { 
   runInvoicePaymentProcessWithoutAddingToShopBalance
 } = require('../utils/processPayment');
 const { fetchAndCalculateDues } = require("./fetchAndCalculateDues");
 
-async function generateInvoice(shop_id, monthYear) {
+async function generateInvoice(shop_id, monthYear,adminName = "System") {
   try {
+    const invoiceDate = new Date(`${monthYear}-01T00:00:00.000Z`);
+
     //  Fetch shop details
     const shop = await Shop.findOne({ where: { shop_id } });
 
@@ -84,6 +87,8 @@ async function generateInvoice(shop_id, monthYear) {
       total_arrears: totalArrears,
       total_amount: totalAmountToPay,
       status: "Unpaid",
+      createdAt: invoiceDate,
+       updatedAt: invoiceDate
     });
 
     //  Create linked entries in related tables
@@ -92,6 +97,8 @@ async function generateInvoice(shop_id, monthYear) {
       invoice_id: invoice.invoice_id,
       rent_amount: rentAmount,
       status: "Unpaid",
+      createdAt: invoiceDate,
+      updatedAt: invoiceDate
     });
 
     await OperationFee.create({
@@ -99,6 +106,8 @@ async function generateInvoice(shop_id, monthYear) {
       invoice_id: invoice.invoice_id,
       operation_amount: operationFee,
       status: "Unpaid",
+      createdAt: invoiceDate,
+      updatedAt: invoiceDate
     });
 
     await Vat.create({
@@ -106,6 +115,8 @@ async function generateInvoice(shop_id, monthYear) {
       invoice_id: invoice.invoice_id,
       vat_amount: vatAmount,
       status: "Unpaid",
+      createdAt: invoiceDate,
+     updatedAt: invoiceDate
     });
    
     // 📝 Log event in audit_trail
@@ -114,8 +125,10 @@ async function generateInvoice(shop_id, monthYear) {
       invoice_id: invoice.invoice_id,
       event_type: "Invoice Generated",
       event_description: `Invoice ${invoice.invoice_id} generated for shop ${shop_id}`,
-      user_actioned: "System", // Replace with actual user
-    });
+      user_actioned: adminName || "System",
+      createdAt: invoiceDate,
+      updatedAt: invoiceDate
+        });
 
     console.log(`✅ Invoice ${invoice.invoice_id} generated successfully.`);
     if (shopBalanceAmount  > 0) {

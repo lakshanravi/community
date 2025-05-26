@@ -8,7 +8,7 @@ const router = express.Router();
 /**
  * ✅ Issue a new sanitation ticket
  */
-router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin', 'tiketing']), async (req, res) => {
   const { price } = req.body;
 
   if (!price) {
@@ -117,5 +117,23 @@ router.get('/monthly-income', authenticateUser, authorizeRole(['admin', 'superad
     res.status(500).json({ message: 'Error fetching monthly income', error: error.message });
   }
 });
+
+router.delete('/:id', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const ticket = await Sanitation.findByPk(id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    await ticket.destroy();
+
+    res.status(200).json({ message: 'Ticket deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting ticket', error: error.message });
+  }
+});
+
 
 module.exports = router;

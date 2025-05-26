@@ -7,9 +7,7 @@ import {
     FaFileInvoice,
     FaHome,
     FaMoneyBill,
-    FaNewspaper // Import the FaNewspaper icon for Publication
-    ,
-
+    FaNewspaper,
     FaSignOutAlt,
     FaStore,
     FaTag,
@@ -19,7 +17,8 @@ import {
     FaUser
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "./../context/AuthContext"; // Adjust the import path as necessary
+import { useAuth } from "./../context/AuthContext"; // Adjust the path as needed
+import ConfirmWrapper from "./ConfirmWrapper"; // Adjust the path as needed
 
 const menuItems = [
     { path: "/admin-dashboard", icon: <FaHome />, label: "Dashboard" },
@@ -33,7 +32,7 @@ const menuItems = [
     { path: "/vehicle-ticketing", icon: <FaTruckPickup />, label: "Vehicle Ticketing" },
     { path: "/sanitation-ticketing", icon: <FaToilet />, label: "Sanitation Ticketing" },
     { path: "/settings", icon: <FaCog />, label: "Settings" },
-    { path: "/publication", icon: <FaNewspaper />, label: "Publication" }, // Added Publication menu item
+    { path: "/publication", icon: <FaNewspaper />, label: "Publication" },
 ];
 
 const Sidebar = () => {
@@ -67,27 +66,31 @@ const Sidebar = () => {
                         </li>
                     ))}
                 </ul>
-                {/* Logout Button */}
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center p-2 mt-auto hover:bg-red-600 transition rounded-lg text-white w-full text-left"
-                >
-                    <span className="text-xl ml-4 mr-4"><FaSignOutAlt /></span>
-                    <span className={`transition-all duration-300 ${isExpanded ? "opacity-100" : "opacity-0 hidden"}`}>Logout</span>
-                </button>
+                {/* Logout Button with ConfirmWrapper */}
+                <ConfirmWrapper onConfirm={handleLogout} message={"Are you sure you want to logout?"}>
+
+                    <button
+                        className="flex items-center p-2 mt-auto hover:bg-red-600 transition rounded-lg text-white w-full text-left"
+                    >
+                        <span className="text-xl ml-4 mr-4"><FaSignOutAlt /></span>
+                        <span className={`transition-all duration-300 ${isExpanded ? "opacity-100" : "opacity-0 hidden"}`}>Logout</span>
+                    </button>
+                </ConfirmWrapper>
             </div>
 
             {/* Sidebar for mobile view (Bottom navigation) */}
-            <div className="bg-gray-900 text-white fixed bottom-0 left-0 w-full flex justify-around p-2 md:hidden">
+            <div className="bg-gray-900 text-white fixed bottom-0 left-0 w-full flex justify-around p-2 md:hidden z-50">
                 {menuItems.map((item) => (
                     <Link key={item.path} to={item.path} className="flex flex-col items-center">
                         <span className="text-xl">{item.icon}</span>
                     </Link>
                 ))}
-                {/* Logout Button in Mobile View */}
-                <button onClick={handleLogout} className="flex flex-col items-center text-red-500">
-                    <span className="text-xl"><FaSignOutAlt /></span>
-                </button>
+                {/* Mobile Logout with ConfirmWrapper */}
+                <ConfirmWrapper onConfirm={handleLogout} message={"Are you sure you want to logout?"}>
+                    <button className="flex flex-col items-center text-red-500">
+                        <span className="text-xl"><FaSignOutAlt /></span>
+                    </button>
+                </ConfirmWrapper>
             </div>
         </>
     );

@@ -9,7 +9,7 @@ const Tenant = sequelize.define('Tenant', {
     autoIncrement: true,
   },
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     allowNull: false, // A tenant must be linked to a shop // If shop is deleted, remove the tenant
   },
   name: {

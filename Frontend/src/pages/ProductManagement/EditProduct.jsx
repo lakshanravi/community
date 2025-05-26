@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/axiosInstance";
+import ConfirmWrapper from "../../components/ConfirmWrapper";
+import { FiEdit3 } from "react-icons/fi";
+import { useAuth } from "../../context/AuthContext";
 
 const EditProduct = () => {
   const navigate = useNavigate();
@@ -10,9 +13,15 @@ const EditProduct = () => {
     type: "fruit",
     image: null,
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const { name, role } = useAuth();
+
+  console.log("Logged in user:", name, "Role:", role);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -21,17 +30,27 @@ const EditProduct = () => {
         setProduct({
           name: response.data.name,
           type: response.data.type,
-          image: null, // image file will be set only on change
+          image: null,
         });
-        setPreview(response.data.image || null); // this is base64 string sent from backend
+        setPreview(response.data.image || null);
       } catch {
-        setError("Failed to load product details.");
+        setError("❌ Failed to load product details.");
       } finally {
         setLoading(false);
       }
     };
     fetchProduct();
   }, [id]);
+
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccess(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,9 +68,8 @@ const EditProduct = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleUpdate = async () => {
+    setSaving(true);
     try {
       const formData = new FormData();
       formData.append("name", product.name);
@@ -66,24 +84,39 @@ const EditProduct = () => {
         },
       });
 
-      alert("Product updated successfully");
-      navigate("/view-products");
-    } catch (err) {
-      setError("Failed to update product.");
+      setSuccess("✅ Product updated successfully! Redirecting...");
+      setTimeout(() => {
+        navigate("/view-products");
+      }, 2000);
+    } catch {
+      setError("❌ Failed to update product.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   if (loading) return <div className="text-center">Loading...</div>;
-  if (error) return <div className="text-center text-red-500">{error}</div>;
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Editing Product Id - {id}</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Editing Product ID: {id}
+        </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-center">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4 text-center">
+            {success}
+          </div>
+        )}
+
+        <form className="space-y-4" onSubmit={(e) => e.preventDefault()} encType="multipart/form-data">
           <div>
             <label className="block text-sm font-medium text-gray-700">Product Name</label>
             <input
@@ -108,6 +141,9 @@ const EditProduct = () => {
               <option value="fruit">Fruit</option>
               <option value="vegetable">Vegetable</option>
               <option value="rice">Rice</option>
+              <option value="potatoes">Potatoes</option>
+              <option value="Leaf Vegetable">Leaf Vegetable</option>
+              <option value="Grain">Grain</option>
             </select>
           </div>
 
@@ -128,13 +164,28 @@ const EditProduct = () => {
             )}
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition duration-300"
-            disabled={loading}
+          <ConfirmWrapper
+            open={showConfirm}
+            message={`Update Confirmation for Product ID: ${id}`}
+            additionalInfo={`Are you sure you want to update "${product.name}" (Product ID: ${id})? Changes will be saved.`}
+            confirmText="Yes, Update Product"
+            cancelText="No, Cancel"
+            onConfirm={() => {
+              setShowConfirm(false);
+              handleUpdate();
+            }}
+            onCancel={() => setShowConfirm(false)}
+            icon={<FiEdit3 />}
           >
-            {loading ? "Updating..." : "Update Product"}
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(true)}
+              className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition duration-300"
+              disabled={saving}
+            >
+              {saving ? "Updating..." : "Update Product"}
+            </button>
+          </ConfirmWrapper>
 
           <button
             type="button"

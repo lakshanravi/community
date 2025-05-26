@@ -10,7 +10,7 @@ const VAT = sequelize.define('VAT', {
     autoIncrement: true,
   },
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     allowNull: false,
   },
   invoice_id: {

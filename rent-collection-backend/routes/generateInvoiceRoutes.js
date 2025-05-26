@@ -13,12 +13,12 @@ function getCurrentMonthYear() {
   return `${year}-${month}`;
 }
 
-// 🔄 Generate invoices for all shops (admin/superadmin only)
-// 🔄 Generate invoices for all shops (admin/superadmin only)
+// 🔄 Generate invoices for all shops (superadmin only)
+
 router.post(
   "/generate-all",
   authenticateUser,
-  authorizeRole(["superadmin", "admin"]),
+  authorizeRole(["superadmin"]),
   async (req, res) => {
     try {
       const monthYear = getCurrentMonthYear();
@@ -28,11 +28,13 @@ router.post(
         return res.status(404).json({ message: "No shops found." });
       }
 
+      const adminName = req.user?.email || "System"; // Logged-in user email
+
       const results = [];
 
       for (const shop of shops) {
         try {
-          const invoice = await generateInvoice(shop.shop_id, monthYear);
+          const invoice = await generateInvoice(shop.shop_id, monthYear, adminName);
           results.push({
             shop_id: shop.shop_id,
             status: "success",
@@ -48,7 +50,7 @@ router.post(
       }
 
       return res.status(200).json({
-        message: `Invoice generation completed for ${monthYear}.`,
+        message: `Invoice generation completed for ${monthYear} by ${adminName}.`,
         results,
       });
     } catch (error) {

@@ -1,11 +1,12 @@
 import 'font-awesome/css/font-awesome.min.css';
-import React from 'react';
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import AdminDashboard from "./pages/AdminDashboard";
+import Contact from './pages/Contact';
+import SystemSetting from './pages/CorrectionManagement/SystemSetting';
 import HomeDailyPrice from './pages/DailyPrice';
 import AddDailyPrice from './pages/DailyPrice/AddDailyPrice';
 import DailyPrice from './pages/DailyPrice/DailyPrice';
@@ -24,6 +25,7 @@ import EditProduct from './pages/ProductManagement/EditProduct';
 import ProductManagement from './pages/ProductManagement/ProductManagement';
 import ProductSummary from './pages/ProductManagement/ProductSummary';
 import ViewProducts from './pages/ProductManagement/ViewProducts';
+import ProductPriceChart from './pages/ProductPriceChart';
 import AddPublication from './pages/Publications/AddPublication';
 import Publication from './pages/Publications/PublicationManagement';
 import ViewPublications from './pages/Publications/ViewPublications';
@@ -43,54 +45,73 @@ import EditTenant from './pages/TenantManagement/EditTenant';
 import TenantManagement from './pages/TenantManagement/TenantManagement';
 import ViewTenants from './pages/TenantManagement/ViewTenants';
 import VehicleTicket from './pages/VehicleTickets/VehicleTickets';
-import ProductPriceChart from './pages/ProductPriceChart';
+import PrivateRoute from './components/PrivateRoute'
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-100">
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/manager-dashboard" element={<ManagerDashboard />} />
-            <Route path="/shop-management" element={<ShopManagement />} />
-            <Route path="/tenant-management" element={<TenantManagement />} />
-            <Route path="/invoices" element={<Invoice />} />
-            <Route path="/payments" element={<Payment />} />
-            <Route path="/reports" element={<Report />} />
-            <Route path="/settings" element={<Setting />} />
-            <Route path="/add-shop" element={<AddShop />} />
-            <Route path="/edit-shop/:id" element={<EditShop />} />
-            <Route path="/view-shops" element={<ViewShops />} />
-            <Route path="/add-tenant" element={<AddTenant />} />
-            <Route path="/view-tenants" element={<ViewTenants />} />
-            <Route path="/edit-tenant/:id" element={<EditTenant />} />
-            <Route path="/make-payment" element={<MakePayment />} />
-            <Route path="/view-payments" element={<ViewPayments />} />
-            <Route path="/correct-payment" element={<CorrectPayment />} />
-            <Route path="/shop-summary/:shopId" element={<ShopSummary />} />
-            <Route path="/update-vat-rate" element={<UpdateVATRate />} />
-            <Route path="/system-logs" element={<SystemLog />} />
-            <Route path="/vehicle-ticketing" element={<VehicleTicket />} />
-            <Route path="/sanitation-ticketing" element={<Sanitation />} />
-            <Route path="/product-management" element={<ProductManagement />} />
-            <Route path="/add-product" element={<AddProduct />} />
-            <Route path="/edit-product/:id" element={<EditProduct />} />
-            <Route path="/view-products" element={<ViewProducts />} />
-            <Route path="/daily-price" element={<DailyPrice/>} />
-            <Route path="/add-dailyprice" element={<AddDailyPrice />} />
-            <Route path="/view-dailyprices" element={<ViewDailyPrice />} />
-            <Route path="/edit-dailyprice/:date/:productId" element={<EditDailyPrice />} />
-            <Route path="/product-summary/:productId" element={<ProductSummary />} /> 
-            <Route path="/publication" element={<Publication />} />
-            <Route path="/add-publication" element={<AddPublication />} />
-            <Route path="/view-publications" element={<ViewPublications />} />
             <Route path="/home-dailyprice" element={<HomeDailyPrice />} />
-            <Route path="/admin-panel" element={<AdminPanel />}/>
+            <Route path="/contact" element={<Contact />} />
             <Route path="/product/:id/chart" element={<ProductPriceChart />} />
 
+            {/* Protected routes */}
+            <Route
+              path="/admin-dashboard"
+              element={<PrivateRoute><AdminDashboard /></PrivateRoute>}
+            />
+            <Route
+              path="/manager-dashboard"
+              element={<PrivateRoute><ManagerDashboard /></PrivateRoute>}
+            />
+            <Route
+              path="/shop-management"
+              element={<PrivateRoute><ShopManagement /></PrivateRoute>}
+            />
+            <Route
+              path="/tenant-management"
+              element={<PrivateRoute><TenantManagement /></PrivateRoute>}
+            />
+            <Route path="/invoices" element={<PrivateRoute><Invoice /></PrivateRoute>} />
+            <Route path="/payments" element={<PrivateRoute><Payment /></PrivateRoute>} />
+            <Route path="/reports" element={<PrivateRoute><Report /></PrivateRoute>} />
+            <Route path="/settings" element={<PrivateRoute><Setting /></PrivateRoute>} />
+            <Route path="/add-shop" element={<PrivateRoute><AddShop /></PrivateRoute>} />
+            <Route path="/edit-shop/:id" element={<PrivateRoute><EditShop /></PrivateRoute>} />
+            <Route path="/view-shops" element={<PrivateRoute><ViewShops /></PrivateRoute>} />
+            <Route path="/add-tenant" element={<PrivateRoute><AddTenant /></PrivateRoute>} />
+            <Route path="/view-tenants" element={<PrivateRoute><ViewTenants /></PrivateRoute>} />
+            <Route path="/edit-tenant/:id" element={<PrivateRoute><EditTenant /></PrivateRoute>} />
+            <Route path="/make-payment" element={<PrivateRoute><MakePayment /></PrivateRoute>} />
+            <Route path="/view-payments" element={<PrivateRoute><ViewPayments /></PrivateRoute>} />
+            <Route path="/correct-payment" element={<PrivateRoute><CorrectPayment /></PrivateRoute>} />
+            <Route path="/shop-summary/:shopId" element={<PrivateRoute><ShopSummary /></PrivateRoute>} />
+            <Route path="/update-vat-rate" element={<PrivateRoute><UpdateVATRate /></PrivateRoute>} />
+            <Route path="/system-logs" element={<PrivateRoute><SystemLog /></PrivateRoute>} />
+            <Route path="/vehicle-ticketing" element={<PrivateRoute><VehicleTicket /></PrivateRoute>} />
+            <Route path="/sanitation-ticketing" element={<PrivateRoute><Sanitation /></PrivateRoute>} />
+            <Route path="/product-management" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
+            <Route path="/add-product" element={<PrivateRoute><AddProduct /></PrivateRoute>} />
+            <Route path="/edit-product/:id" element={<PrivateRoute><EditProduct /></PrivateRoute>} />
+            <Route path="/view-products" element={<PrivateRoute><ViewProducts /></PrivateRoute>} />
+            <Route path="/daily-price" element={<PrivateRoute><DailyPrice /></PrivateRoute>} />
+            <Route path="/add-dailyprice" element={<PrivateRoute><AddDailyPrice /></PrivateRoute>} />
+            <Route path="/view-dailyprices" element={<PrivateRoute><ViewDailyPrice /></PrivateRoute>} />
+            <Route path="/edit-dailyprice/:date/:productId" element={<PrivateRoute><EditDailyPrice /></PrivateRoute>} />
+            <Route path="/product-summary/:productId" element={<PrivateRoute><ProductSummary /></PrivateRoute>} />
+            <Route path="/publication" element={<PrivateRoute><Publication /></PrivateRoute>} />
+            <Route path="/add-publication" element={<PrivateRoute><AddPublication /></PrivateRoute>} />
+            <Route path="/view-publications" element={<PrivateRoute><ViewPublications /></PrivateRoute>} />
+
+            <Route path="/admin-panel" element={<PrivateRoute><AdminPanel /></PrivateRoute>} />
+
+            <Route path="/system-setting" element={<PrivateRoute><SystemSetting /></PrivateRoute>} />
           </Routes>
+          <ToastContainer />
         </div>
       </Router>
     </AuthProvider>

@@ -12,7 +12,7 @@ const Product = sequelize.define("Product", {
         allowNull: false
     },
     type: {
-        type: DataTypes.ENUM("fruit", "vegetable", "rice"), // Now includes "rice"
+        type: DataTypes.ENUM("fruit", "vegetable", "rice","potatoes","Leaf Vegetable","Grain"), // Now includes "rice"
         allowNull: false
     },
     image: {

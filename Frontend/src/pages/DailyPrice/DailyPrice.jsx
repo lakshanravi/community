@@ -1,9 +1,15 @@
 import { Eye, PlusCircle } from "lucide-react"; // optional icons
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
+import { useAuth } from "../../context/AuthContext"; // adjust path if needed
+
+
 
 const DailyPrice = () => {
   const navigate = useNavigate();
+  const { name, role } = useAuth();
+
+  console.log("Logged in user:", name, "Role:", role);
 
   return (
     <div className="flex flex-col md:flex-row h-screen">

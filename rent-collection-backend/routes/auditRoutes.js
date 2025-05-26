@@ -5,10 +5,10 @@ const { authenticateUser, authorizeRole } = require("../middleware/authMiddlewar
 
 const router = express.Router();
 
-// Get all audit records (Only superadmin or admin can view audit logs)
+// Get all audit records (Only superadmin can view audit logs)
 
 
-router.get("/", authenticateUser, authorizeRole(["superadmin", "admin"]), async (req, res) => {
+router.get("/", authenticateUser, authorizeRole(["superadmin"]), async (req, res) => {
     const { page = 1, limit = 50, event_type, start_date, end_date, shop_id } = req.query;
     const offset = (page - 1) * limit;
 
@@ -44,7 +44,7 @@ router.get("/", authenticateUser, authorizeRole(["superadmin", "admin"]), async 
 });
 
 // Get audit record by ID
-router.get('/:auditId', authenticateUser, authorizeRole(['superadmin', 'admin']), async (req, res) => {
+router.get('/:auditId', authenticateUser, authorizeRole(['superadmin']), async (req, res) => {
   const { auditId } = req.params;
   try {
     const audit = await AuditTrail.findByPk(auditId);

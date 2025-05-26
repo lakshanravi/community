@@ -8,20 +8,24 @@ const OperationFee = require('../models/OperationFee');
 const Fine = require('../models/Fine');
 const AuditTrail = require('../models/AuditTrail');
 const Vat = require('../models/VAT');
+const { adjustFineBasedOnPaymentDate } = require('./fineajest'); // or wherever the function is
 
-async function processPaymentByShopId(shopId, amountPaid, paymentMethod) {
-    return processPayment(shopId, amountPaid, paymentMethod, null);
+// Entry point with shop ID
+async function processPaymentByShopId(shopId, amountPaid, paymentMethod, paymentDate, adminName) {
+    return processPayment(shopId, amountPaid, paymentMethod, paymentDate, adminName, null);
 }
 
-async function processPaymentByInvoiceId(invoiceId, amountPaid, paymentMethod) {
+// Entry point with invoice ID
+async function processPaymentByInvoiceId(invoiceId, amountPaid, paymentMethod, paymentDate, adminName) {
     const invoice = await Invoice.findByPk(invoiceId);
     if (!invoice) {
         return { success: false, message: 'Invoice not found' };
     }
-    return processPayment(invoice.shop_id, amountPaid, paymentMethod, invoiceId);
+    return processPayment(invoice.shop_id, amountPaid, paymentMethod, paymentDate, adminName, invoiceId);
 }
 
-async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = null) {
+// Main payment processor
+async function processPayment(shopId, amountPaid, paymentMethod, paymentDate = null, adminName = 'System', invoiceId = null) {
     const t = await sequelize.transaction();
     try {
         amountPaid = parseFloat(amountPaid);
@@ -29,11 +33,13 @@ async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = nul
             throw new Error("Invalid payment amount.");
         }
 
+        const paymentTimestamp = paymentDate ? new Date(paymentDate) : new Date();
+
         // Create Payment Record
         const payment = await Payment.create({
             shop_id: shopId,
             amount_paid: amountPaid.toFixed(2),
-            payment_date: new Date(),
+            payment_date: paymentTimestamp,
             payment_method: paymentMethod,
             invoice_id: invoiceId
         }, { transaction: t });
@@ -44,12 +50,12 @@ async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = nul
             shopBalance = await ShopBalance.create({
                 shop_id: shopId,
                 balance_amount: amountPaid.toFixed(2),
-                last_updated: new Date()
+                last_updated: paymentTimestamp
             }, { transaction: t });
         } else {
             shopBalance.balance_amount = parseFloat(shopBalance.balance_amount) + amountPaid;
             shopBalance.balance_amount = parseFloat(shopBalance.balance_amount.toFixed(2));
-            shopBalance.last_updated = new Date();
+            shopBalance.last_updated = paymentTimestamp;
             await shopBalance.save({ transaction: t });
         }
 
@@ -58,12 +64,12 @@ async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = nul
             shop_id: shopId,
             event_type: 'Payment Made',
             event_description: `Payment of ${amountPaid.toFixed(2)} received via ${paymentMethod}`,
-            user_actioned: 'System'
+            user_actioned: adminName
         }, { transaction: t });
 
         // Fetch invoices that need payment
         let invoices;
-        if (false) { // Change this condition to true if you want to process only specific invoices
+        if (false) { // Placeholder logic
             invoices = await Invoice.findAll({ where: { invoice_id: invoiceId }, transaction: t });
         } else {
             invoices = await Invoice.findAll({
@@ -79,13 +85,19 @@ async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = nul
         // Process payments for each invoice
         let remainingBalance = shopBalance.balance_amount;
         for (const invoice of invoices) {
-            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t);
             if (remainingBalance <= 0) break;
+        
+            // 🔁 Adjust fine based on payment date before processing payment
+            shopBalance = await adjustFineBasedOnPaymentDate(invoice, paymentTimestamp, shopBalance, adminName, t);
+        
+            // 💵 Then process invoice payments
+            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t, paymentTimestamp);
         }
+        
 
         // Update Shop Balance
         shopBalance.balance_amount = remainingBalance;
-        shopBalance.last_updated = new Date();
+        shopBalance.last_updated = paymentTimestamp;
         await shopBalance.save({ transaction: t });
 
         await t.commit();
@@ -97,61 +109,96 @@ async function processPayment(shopId, amountPaid, paymentMethod, invoiceId = nul
     }
 }
 
-async function processInvoicePayments(invoice, remainingBalance, t) {
-  let allPaid = true;  // Assume all records are fully paid
-  let hasUnpaidOrPartial = false; // Flag for partially/unpaid records
+// Process individual invoice components (rent, VAT, etc.)
+async function processInvoicePayments(invoice, remainingBalance, t, paymentTimestamp) {
+  
 
-  for (const model of [Rent, OperationFee, Vat, Fine]) {
-      const records = await model.findAll({
-          where: {
-              invoice_id: invoice.invoice_id,
-              status: { [Sequelize.Op.in]: ['Unpaid', 'Partially Paid', 'Arrest'] }
-          },
-          transaction: t
-      });
+    for (const model of [Vat, OperationFee, Rent, Fine]) {
+        const records = await model.findAll({
+            where: {
+                invoice_id: invoice.invoice_id,
+                status: { [Sequelize.Op.in]: ['Unpaid', 'Partially Paid', 'Arrest'] }
+            },
+            transaction: t
+        });
 
-      if (records.length === 0) continue; // Skip if no relevant records
+        if (records.length === 0) continue;
 
-      for (const record of records) {
-          if (remainingBalance <= 0) break; // Stop processing if no balance left
+        for (const record of records) {
+            if (remainingBalance <= 0) break;
 
-          const dueAmount = parseFloat(record[Object.keys(record.dataValues).find(key => key.includes('amount'))]) - parseFloat(record.paid_amount);
-          const payment = Math.min(remainingBalance, dueAmount);
+            const dueAmount = parseFloat(record[Object.keys(record.dataValues).find(key => key.includes('amount'))]) - parseFloat(record.paid_amount);
+            const payment = Math.min(remainingBalance, dueAmount);
 
-          record.paid_amount = parseFloat(record.paid_amount) + payment;
-          record.paid_amount = parseFloat(record.paid_amount.toFixed(2));
-          remainingBalance -= payment;
+            record.paid_amount = parseFloat(record.paid_amount) + payment;
+            record.paid_amount = parseFloat(record.paid_amount.toFixed(2));
+            remainingBalance -= payment;
 
-          // Update record status
-          if (record.paid_amount >= dueAmount) {
-              record.status = 'Paid';
-          } else {
-              record.status = 'Partially Paid';
-              allPaid = false;  // At least one record is not fully paid
-              hasUnpaidOrPartial = true;
-          }
+            // Update record status
+            if (record.paid_amount >= dueAmount) {
+                record.status = 'Paid';
+            } else {
+                record.status = 'Partially Paid';
+                allPaid = false;
+                hasUnpaidOrPartial = true;
+            }
 
-          record.paid_date = new Date();
-          await record.save({ transaction: t });
-      }
-  }
+            record.paid_date = paymentTimestamp;
+            await record.save({ transaction: t });
+        }
+    }
 
-  // Final invoice status update
-  if (allPaid && !hasUnpaidOrPartial) {
-      invoice.status = 'Paid';
-  } else if (hasUnpaidOrPartial) {
-      invoice.status = 'Partially Paid';
-  }
+let totalComponents = 0;
+let paidComponents = 0;
+let unpaidComponents = 0;
+let partiallyPaidComponents = 0;
+let arrestComponents = 0;
 
-  await invoice.save({ transaction: t });
-  return remainingBalance;
+for (const model of [Vat, OperationFee, Rent, Fine]) {
+    const components = await model.findAll({
+        where: { invoice_id: invoice.invoice_id },
+        transaction: t
+    });
+
+    for (const component of components) {
+        totalComponents++;
+
+        switch (component.status) {
+            case 'Paid':
+                paidComponents++;
+                break;
+            case 'Partially Paid':
+                partiallyPaidComponents++;
+                break;
+            case 'Unpaid':
+                unpaidComponents++;
+                break;
+            case 'Arrest':
+                arrestComponents++;
+                break;
+        }
+    }
 }
 
+// 👇 Determine invoice status
+if (paidComponents === totalComponents) {
+    invoice.status = 'Paid';
+} else if (arrestComponents === totalComponents) {
+    invoice.status = 'Arrest';
+} else if (unpaidComponents + arrestComponents === totalComponents) {
+    invoice.status = 'Unpaid';
+} else {
+    invoice.status = 'Partially Paid';
+}
 
+    await invoice.save({ transaction: t });
+    return remainingBalance;
+}
+
+// Utility to process unpaid invoices using existing shop balance
 async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
     const t = await sequelize.transaction();
     try {
-        // Fetch unpaid invoices for the given shop
         const invoices = await Invoice.findAll({
             where: {
                 shop_id: shopId,
@@ -166,7 +213,6 @@ async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
             return { success: false, message: 'No unpaid invoices found for this shop.' };
         }
 
-        // Get shop balance (without modifying it)
         const shopBalance = await ShopBalance.findByPk(shopId, { transaction: t });
         if (!shopBalance || shopBalance.balance_amount <= 0) {
             await t.rollback();
@@ -175,15 +221,16 @@ async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
 
         let remainingBalance = shopBalance.balance_amount;
 
-        // Process invoices without updating ShopBalance
         for (const invoice of invoices) {
-            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t);
+            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t, new Date());
             if (remainingBalance <= 0) break;
         }
+
         await shopBalance.update(
             { balance_amount: remainingBalance },
             { transaction: t }
         );
+
         await t.commit();
         return { success: true, message: 'Invoice payment process completed without modifying shop balance.' };
     } catch (error) {
@@ -193,11 +240,9 @@ async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
     }
 }
 
-module.exports = { 
-    processPaymentByShopId, 
-    processPaymentByInvoiceId, 
-    processInvoicePayments, 
+module.exports = {
+    processPaymentByShopId,
+    processPaymentByInvoiceId,
+    processInvoicePayments,
     runInvoicePaymentProcessWithoutAddingToShopBalance
 };
-
-

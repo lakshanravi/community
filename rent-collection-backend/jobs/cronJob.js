@@ -57,10 +57,10 @@ async function runFineApplication() {
 }
 
 // Schedule Fine Arrest Action to run at 01:00 AM daily
-cron.schedule("0 1 * * *", async () => {
+/*cron.schedule("0 1 * * *", async () => {
   await runFineArrestAction();
   console.log("📆 Fine Arrest Action cron job executed.");
-});
+});*/
 
 // Schedule invoice generation at 00:00 on the 1st day of every month
 cron.schedule("0 0 1 * *", async () => {
@@ -69,16 +69,16 @@ cron.schedule("0 0 1 * *", async () => {
 });
 
 // Schedule Arrest Action to run at 00:00 every day
-cron.schedule("0 0 * * *", async () => {
+/*cron.schedule("0 0 * * *", async () => {
   await runArrestAction();
   console.log("📆 Arrest Action cron job executed.");
 });
-
+*/
 // Schedule Fine application to run at 02:00 AM daily
-cron.schedule("0 2 * * *", async () => {
+/*cron.schedule("0 2 * * *", async () => {
   await runFineApplication();
   console.log("📆 Fine application cron job executed.");
-});
+});*/
 
 // Export all the functions as a single module
 module.exports = { generateMonthlyInvoices, runArrestAction, runFineArrestAction, runFineApplication };

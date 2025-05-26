@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/axiosInstance";
+import { useAuth } from "../../context/AuthContext";
 
 const SystemLog = () => {
     const navigate = useNavigate();
@@ -14,6 +15,9 @@ const SystemLog = () => {
     const [shopId, setShopId] = useState("");
     const [page, setPage] = useState(1);
     const limit = 10;
+    const { name, role } = useAuth();
+
+    console.log("Logged in user:", name, "Role:", role);
 
     useEffect(() => {
         const fetchLogs = async () => {
@@ -48,7 +52,7 @@ const SystemLog = () => {
         <div className="flex flex-col items-center min-h-screen bg-gray-50 p-6">
             <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-6xl overflow-x-auto">
                 <div className="flex justify-between items-center mb-4">
-                    <button 
+                    <button
                         className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
                         onClick={() => navigate(-1)}
                     >
@@ -70,24 +74,24 @@ const SystemLog = () => {
                         <option value="Fine Applied">Fine Applied</option>
                         <option value="Correction">Correction</option>
                     </select>
-                    <input 
-                        type="date" 
+                    <input
+                        type="date"
                         className="p-2 border rounded w-full sm:w-auto"
-                        value={startDate} 
-                        onChange={(e) => setStartDate(e.target.value)} 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
                     />
-                    <input 
-                        type="date" 
+                    <input
+                        type="date"
                         className="p-2 border rounded w-full sm:w-auto"
-                        value={endDate} 
-                        onChange={(e) => setEndDate(e.target.value)} 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
                     />
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         className="p-2 border rounded w-full sm:w-auto"
                         placeholder="Shop ID"
-                        value={shopId} 
-                        onChange={(e) => setShopId(e.target.value)} 
+                        value={shopId}
+                        onChange={(e) => setShopId(e.target.value)}
                     />
                 </div>
 
@@ -139,7 +143,7 @@ const SystemLog = () => {
 
                 {/* Pagination Controls */}
                 <div className="flex justify-between items-center mt-4">
-                    <button 
+                    <button
                         className="p-2 bg-blue-500 text-white rounded disabled:opacity-50 flex items-center"
                         onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                         disabled={page === 1}
@@ -147,7 +151,7 @@ const SystemLog = () => {
                         <FiChevronLeft className="mr-1" /> Previous
                     </button>
                     <span className="p-2">Page {page}</span>
-                    <button 
+                    <button
                         className="p-2 bg-blue-500 text-white rounded flex items-center"
                         onClick={() => setPage((prev) => prev + 1)}
                     >

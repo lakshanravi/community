@@ -8,7 +8,7 @@ const Fine = sequelize.define('Fine', {
     autoIncrement: true,
   },
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     allowNull: false, // Ensure a shop is always linked
   },
   invoice_id: {
@@ -22,6 +22,10 @@ const Fine = sequelize.define('Fine', {
   paid_amount: {
     type: DataTypes.DECIMAL(10,2),
     defaultValue: 0,
+  },
+  paid_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
   },
   generate_date: {
     type: DataTypes.DATE,

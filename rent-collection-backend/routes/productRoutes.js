@@ -11,7 +11,7 @@ const upload = multer({ storage });
 const router = express.Router();
 
 // Get all products
-router.get('/', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.get('/', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
   try {
     const products = await Product.findAll();
 
@@ -27,7 +27,7 @@ router.get('/', authenticateUser, authorizeRole(['admin', 'superadmin']), async 
 });
 
 // Get product by ID
-router.get('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.get('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.productId);
     if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -44,7 +44,7 @@ router.get('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin'
 });
 
 // Add new product
-router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin']), upload.single('image'), async (req, res) => {
+router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), upload.single('image'), async (req, res) => {
   const { name, type } = req.body;
   const image = req.file ? req.file.buffer : null;
 
@@ -61,7 +61,7 @@ router.post('/', authenticateUser, authorizeRole(['admin', 'superadmin']), uploa
 });
 
 // Update product
-router.put('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin']), upload.single('image'), async (req, res) => {
+router.put('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), upload.single('image'), async (req, res) => {
   const { name, type } = req.body;
   const image = req.file ? req.file.buffer : null;
 
@@ -81,7 +81,7 @@ router.put('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin'
 });
 
 // Delete product
-router.delete('/:productId', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.delete('/:productId', authenticateUser, authorizeRole([ 'superadmin']), async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.productId);
     if (!product) return res.status(404).json({ message: 'Product not found' });

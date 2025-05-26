@@ -2,7 +2,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Shop = sequelize.define('Shop', {
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     primaryKey: true,
     allowNull: false,
     unique: true,

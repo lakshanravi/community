@@ -1,82 +1,96 @@
-// src/pages/Home.jsx
-
-import React from "react";
-import { useTranslation } from "react-i18next";
-import Slider from "react-slick";
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import {
+  BellAlertIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/solid";
+import React, { useState } from "react";
 import EconomicCenterNews from "../components/EconomicCenterNews";
-
-
-// Import slick-carousel styles
-import "slick-carousel/slick/slick-theme.css";
-import "slick-carousel/slick/slick.css";
-
-const Home = () => {
-    const { t } = useTranslation();
-
-    const settings = {
-        dots: true,
-        infinite: true,
-        speed: 500,
-        slidesToShow: 1,
-        slidesToScroll: 1,
-        autoplay: true,
-        autoplaySpeed: 2000,
-    };
-
+import FeatureCards from "../components/FeatureCards";
+import Footer from "../components/Footer";
+import MarketOperations from "../components/MarketOperations"; // ✅ Import the new component
+import Navbar from "../components/Navbar";
+import NewsWidget from "../components/NewsWidget";
+import ServiceSection from "../components/ServiceSection";
+import VisionMission from "../components/VisionMission";
+import WelcomeSection from "../components/WelcomeSection";
+  const Home = () => {
+    const [isOpen, setIsOpen] = useState(false);
+  
+    // ✅ Example: Determine if there's any news to display
+    const hasNews = true; // Replace this with real logic or prop from EconomicCenterNews
+  
     return (
-        <div>
-            <Navbar />
-
-            {/* Carousel */}
-            <div className="w-full">
-                <Slider {...settings}>
-                    <div>
-                        <img
-                            src="/images/1.jpg"
-                            alt="Slide 1"
-                            className="w-full h-[500px] object-cover"
-                        />
-                    </div>
-                    <div>
-                        <img
-                            src="/images/2.jpg"
-                            alt="Slide 2"
-                            className="w-full h-[500px] object-cover"
-                        />
-                    </div>
-                    <div>
-                        <img
-                            src="/images/3.jpg"
-                            alt="Slide 3"
-                            className="w-full h-[500px] object-cover"
-                        />
-                    </div>
-                </Slider>
+      <div>
+        <Navbar />
+        <WelcomeSection />
+        
+        <FeatureCards />
+        <VisionMission />
+        <ServiceSection />
+        <MarketOperations /> {/* ✅ Add this line to display the new section */}
+        <EconomicCenterNews />
+        <Footer />
+  
+        {/* 🔽 Slide-out News Panel */}
+        <div
+          className={`fixed top-1/4 left-0 z-50 transition-transform duration-300 ${
+            isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="bg-white shadow-2xl border-l-4 border-green-600 rounded-r-xl w-80 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BellAlertIcon className="h-5 w-5 text-green-700 animate-bounce" />
+              <h3 className="text-green-800 font-semibold text-lg">
+                Center News
+              </h3>
             </div>
-
-            {/* Welcome Section */}
-            <div className="container mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div className="text-left space-y-6">
-                    <h1 className="text-3xl font-bold">{t("home.welcomeMessage")}</h1>
-                    <p className="text-lg text-gray-700 text-justify">{t("home.description")}</p>
-                </div>
-
-                <div>
-                    <img
-                        src="/images/logo.jpg"
-                        alt="Illustration"
-                        className="rounded-3xl w-full h-[350px] object-contain"
-                    />
-                </div>
-            </div>
-
-            <EconomicCenterNews />
-
-            <Footer />
+            <NewsWidget />
+          </div>
         </div>
-    );
-};
+  {/* ☎️ Call Button */}
+<a
+  href="tel:+066-2285181" // Replace with your actual Dambulla Economic Center number
+  className="fixed bottom-6 right-6 z-50 bg-green-600 text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:bg-green-700 transition-all duration-300"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 5a2 2 0 012-2h3.28a2 2 0 011.94 1.52l.58 2.32a2 2 0 01-.45 1.86L8.1 10.9a11.05 11.05 0 005.01 5.01l2.2-2.2a2 2 0 011.86-.45l2.32.58A2 2 0 0121 17.72V21a2 2 0 01-2 2h-.28C9.95 23 1 14.05 1 3.28V3a2 2 0 012-2z"
+    />
+  </svg>
+  Call Center
+</a>
 
-export default Home;
+        {/* 🟢 Toggle Button */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`fixed top-1/3 left-0 z-50 bg-green-600 text-white p-2 rounded-r-lg shadow-md transition-all duration-300 hover:bg-green-700 ${
+            hasNews && !isOpen ? "animate-pulse" : ""
+          }`}
+        >
+          <div className="relative">
+            {isOpen ? (
+              <ChevronLeftIcon className="h-6 w-6" />
+            ) : (
+              <ChevronRightIcon className="h-6 w-6" />
+            )}
+            {/* 🔴 Notification Dot */}
+            {hasNews && !isOpen && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white"></span>
+            )}
+          </div>
+        </button>
+      </div>
+    );
+  };
+  
+  export default Home;
+  

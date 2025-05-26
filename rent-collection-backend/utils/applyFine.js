@@ -13,73 +13,86 @@ const sequelize = require('../config/database');
 async function applyFine(invoiceId) {
     const t = await sequelize.transaction();
     try {
-        // Fetch invoice details
+        console.log(`🔍 Looking up invoice ID: ${invoiceId}`);
+        
+        // Check if invoice exists
         const invoice = await Invoice.findByPk(invoiceId, { transaction: t });
         if (!invoice) {
+            console.warn(`⚠️ Invoice ID ${invoiceId} not found.`);
             throw new Error("Invoice not found.");
         }
 
-        // Extract shop_id from the invoice
         const shopId = invoice.shop_id;
+        console.log(`🏪 Shop ID for invoice: ${shopId}`);
 
-        // Check if a fine already exists for this invoice
+        // Early exit if fine already exists
         const existingFine = await Fine.findOne({
             where: { invoice_id: invoiceId },
             transaction: t
         });
 
         if (existingFine) {
+            console.warn(`⚠️ Fine already exists for invoice #${invoiceId}`);
+            await t.rollback();
             return { success: false, message: "Fine already exists for this invoice." };
         }
 
-        // Fetch Rent records for the invoice
+        // Fetch rent records
         const rents = await Rent.findAll({
             where: { invoice_id: invoiceId },
             transaction: t
         });
 
         if (rents.length === 0) {
+            console.warn(`⚠️ No rent records found for invoice #${invoiceId}`);
+            await t.rollback();
             return { success: false, message: "No rent records found for this invoice." };
         }
 
+        // Calculate total fine
         let totalFineAmount = 0;
-
         for (const rent of rents) {
             const outstandingRent = parseFloat(rent.rent_amount) - parseFloat(rent.paid_amount);
             if (outstandingRent > 0) {
-                const fineAmount = outstandingRent * 0.30; // 30% of the remaining rent
+                const fineAmount = outstandingRent * 0.30;
                 totalFineAmount += fineAmount;
+                console.log(`➕ Fine from rent ID ${rent.rent_id}: ${fineAmount.toFixed(2)}`);
             }
         }
 
         if (totalFineAmount === 0) {
+            console.log(`💤 No outstanding rent found for invoice #${invoiceId}`);
+            await t.rollback();
             return { success: false, message: "No outstanding rent to apply a fine." };
         }
 
-        // Create Fine Record with shop_id
+        // Create fine
         await Fine.create({
             invoice_id: invoiceId,
-            shop_id: shopId, // Added shop_id
+            shop_id: shopId,
             fine_amount: totalFineAmount.toFixed(2),
             status: 'Unpaid'
         }, { transaction: t });
 
-        // Update invoice fine & total arrears
-
-
-        // Log in Audit Trail
+        // Audit log
         await AuditTrail.create({
-            shop_id: shopId, // Log event with shop_id
+            shop_id: shopId,
             event_type: 'Fine Applied',
             event_description: `A fine of ${totalFineAmount.toFixed(2)} was applied to Invoice ID ${invoiceId}.`,
             user_actioned: 'System'
         }, { transaction: t });
 
         await t.commit();
-        return { success: true, message: `Fine of ${totalFineAmount.toFixed(2)} applied successfully.` };
+        console.log(`✅ Fine of ${totalFineAmount.toFixed(2)} applied successfully to invoice #${invoiceId}`);
+        return {
+            success: true,
+            message: `Fine of ${totalFineAmount.toFixed(2)} applied successfully.`,
+            fineAmount: totalFineAmount.toFixed(2)
+        };
+
     } catch (error) {
         await t.rollback();
-        console.error("❌ Fine Application Error:", error);
+        console.error(`❌ Error applying fine to invoice #${invoiceId}:`, error);
         return { success: false, message: error.message };
     }
 }

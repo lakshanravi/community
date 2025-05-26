@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/axiosInstance";
+import { useAuth } from "../../context/AuthContext";
 
 const EditDailyPrice = () => {
   const navigate = useNavigate();
   const { date, productId } = useParams();
+  const { name, role } = useAuth();
 
+  console.log("Logged in user:", name, "Role:", role);
   const [dailyPrice, setDailyPrice] = useState({
     minPrice: "",
     maxPrice: "",

@@ -10,7 +10,7 @@ const OperationFee = sequelize.define('OperationFee', {
     autoIncrement: true,
   },
   shop_id: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.STRING(10),
     allowNull: false,
   },
   invoice_id: {

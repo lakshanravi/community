@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/axiosInstance";
+import { useAuth } from "../../context/AuthContext";
 
 ChartJS.register(
   LineElement,
@@ -30,6 +31,9 @@ const ProductSummary = () => {
   const [priceChart, setPriceChart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { name, role } = useAuth();
+
+  console.log("Logged in user:", name, "Role:", role);
 
   useEffect(() => {
     const fetchProductData = async () => {

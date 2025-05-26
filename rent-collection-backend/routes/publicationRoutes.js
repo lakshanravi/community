@@ -89,7 +89,7 @@ router.put('/:publicationId', authenticateUser, authorizeRole(['admin', 'superad
 });
 
 // Delete publication
-router.delete('/:publicationId', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.delete('/:publicationId', authenticateUser, authorizeRole([ 'superadmin']), async (req, res) => {
   try {
     const publication = await Publication.findByPk(req.params.publicationId);
     if (!publication) return res.status(404).json({ message: 'Publication not found' });
