@@ -1,7 +1,6 @@
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { AnimatePresence, motion } from "framer-motion";
-import React from "react";
 import { useTranslation } from "react-i18next";
 
 const ServiceSection = () => {

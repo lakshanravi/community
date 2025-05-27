@@ -1,27 +1,31 @@
-import React, { useEffect, useState } from "react";
+import { Printer } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ConfirmWrapper from "../../components/ConfirmWrapper";
 import Sidebar from "../../components/Sidebar";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axiosInstance";
 import { printInvoices } from "../../utils/printInvoices";
-import { Printer } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const Invoice = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [emailSending, setEmailSending] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [showOkOnly, setShowOkOnly] = useState(false);
+  const [showBulkEmailConfirm, setShowBulkEmailConfirm] = useState(false);
+
   const navigate = useNavigate();
   const { name, role } = useAuth();
 
-  console.log("Logged in user:", name, "Role:", role);
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
@@ -68,11 +72,9 @@ const Invoice = () => {
   const filteredInvoices = invoices.filter((invoice) => {
     if (activeTab !== "all") {
       if (activeTab === "paid" && invoice.status !== "Paid") return false;
-      if (activeTab === "arrears" && invoice.status !== "Arrest") return false;
-      if (activeTab === "partly-paid" && invoice.status !== "Partially Paid")
-        return false;
-      if (activeTab === "newly-arrived" && invoice.printedtime !== 0)
-        return false;
+      if (activeTab === "arrears" && invoice.status !== "Arrears") return false;
+      if (activeTab === "partly-paid" && invoice.status !== "Partially Paid") return false;
+      if (activeTab === "newly-arrived" && invoice.printedtime !== 0) return false;
       if (activeTab === "unpaid" && invoice.status !== "Unpaid") return false;
     }
     return (
@@ -103,42 +105,63 @@ const Invoice = () => {
       setError("Unauthorized: Please log in first.");
       return;
     }
-
     const invoicesToPrint = filteredInvoices.filter((invoice) =>
       selectedInvoices.includes(invoice.invoice_id)
     );
-
     printInvoices(invoicesToPrint, token);
     setShowConfirm(false);
   };
 
-  // Function to handle sending emails for selected invoices
-  const handleSendSingleEmail = async (invoice) => {
+  // Bulk Email: only per-invoice toasts, no summary
+  const handleSendBulkEmail = async () => {
+    setShowBulkEmailConfirm(false);
+    setEmailSending(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("Unauthorized: Please log in first.");
+        setEmailSending(false);
+        toast.error("Unauthorized: Please log in first.", { autoClose: 3000 });
         return;
       }
-
-      const response = await api.post(
-        "/api/send-email",
-        { invoices: [invoice] }, // Send as an array of one
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const invoicesToSend = filteredInvoices.filter((invoice) =>
+        selectedInvoices.includes(invoice.invoice_id)
       );
+      const response = await api.post(
+        "/api/email/send-email",
+        { invoices: invoicesToSend },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEmailSending(false);
 
-      if (response.data.success) {
-        setSuccess(
-          `Invoice ${invoice.invoice_id} sent successfully via email!`
-        );
+      if (response.data && Array.isArray(response.data.results)) {
+        const { results } = response.data;
+        results.forEach((result) => {
+          if (result.success) {
+            toast.info(
+              `Invoice #${result.invoice_id} sent to Shop #${result.shop_id} successfully.`,
+              { autoClose: 2000 }
+            );
+            // Auto-uncheck after successful send
+            setSelectedInvoices((prev) =>
+              prev.filter((id) => id !== result.invoice_id)
+            );
+          } else {
+            toast.error(
+              `Failed to send Invoice #${result.invoice_id} to Shop #${result.shop_id}: ${result.message}`,
+              { autoClose: 4000 }
+            );
+          }
+        });
       } else {
-        setError(`Failed to send invoice ${invoice.invoice_id}.`);
+        toast.error("Failed to send invoices. Invalid response format.", { autoClose: 3000 });
       }
     } catch (error) {
+      setEmailSending(false);
       console.error(error);
-      setError("An error occurred while sending the email.");
+      toast.error(
+        `An error occurred while sending the email: ${error?.response?.data?.message || error.message || "Unknown error"}`,
+        { autoClose: 3000 }
+      );
     }
   };
 
@@ -146,9 +169,20 @@ const Invoice = () => {
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar className="w-64 flex-shrink-0" />
       <div className="flex-1 p-6 overflow-auto">
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
+        {emailSending && <LoadingSpinner />}
         <h1 className="text-3xl font-bold mb-4">Invoice Management</h1>
         {error && <p className="text-red-500">{error}</p>}
-        {success && <p className="text-green-500">{success}</p>}
 
         <input
           type="text"
@@ -178,29 +212,51 @@ const Invoice = () => {
             </button>
           ))}
         </div>
-
-        <ConfirmWrapper
-          show={showConfirm}
-          message={confirmMessage}
-          onConfirm={handleConfirm}
-          onCancel={() => setShowConfirm(false)}
-          confirmText="Yes"
-          cancelText={showOkOnly ? "Ok" : "No"}
-          icon="🖨️"
-        >
-          <button
-            onClick={onPrintClick}
-            disabled={selectedInvoices.length === 0}
-            className={`mt-4 px-6 py-2 rounded-lg text-white flex items-center ${
-              selectedInvoices.length === 0
-                ? "bg-green-300 cursor-not-allowed"
-                : "bg-green-500 hover:bg-green-700"
-            }`}
+        <div className="flex items-center space-x-4 mt-4">
+          <ConfirmWrapper
+            show={showConfirm}
+            message={confirmMessage}
+            onConfirm={handleConfirm}
+            onCancel={() => setShowConfirm(false)}
+            confirmText="Yes"
+            cancelText={showOkOnly ? "Ok" : "No"}
+            icon="🖨️"
           >
-            <Printer className="w-5 h-5 mr-2" />
-            Print Selected Invoices
-          </button>
-        </ConfirmWrapper>
+            <button
+              onClick={onPrintClick}
+              disabled={selectedInvoices.length === 0}
+              className={`px-6 py-2 rounded-lg text-white flex items-center ${
+                selectedInvoices.length === 0
+                  ? "bg-green-300 cursor-not-allowed"
+                  : "bg-green-500 hover:bg-green-700"
+              }`}
+            >
+              <Printer className="w-5 h-5 mr-2" />
+              Print Selected Invoices
+            </button>
+          </ConfirmWrapper>
+          <ConfirmWrapper
+            show={showBulkEmailConfirm}
+            message={`Are you sure you want to send the selected ${selectedInvoices.length} invoice(s) via email?`}
+            onConfirm={handleSendBulkEmail}
+            onCancel={() => setShowBulkEmailConfirm(false)}
+            confirmText="Send"
+            cancelText="Cancel"
+            icon="📧"
+          >
+            <button
+              onClick={() => setShowBulkEmailConfirm(true)}
+              disabled={selectedInvoices.length === 0}
+              className={`px-6 py-2 rounded-lg text-white flex items-center ${
+                selectedInvoices.length === 0
+                  ? "bg-blue-300 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-700"
+              }`}
+            >
+              📧 Send Selected Invoices via Email
+            </button>
+          </ConfirmWrapper>
+        </div>
 
         <div className="overflow-x-auto bg-white p-4 shadow-md rounded-lg mt-4">
           <table className="w-full border-collapse border border-gray-300">
@@ -247,7 +303,7 @@ const Invoice = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="19" className="text-center p-4">
+                  <td colSpan="20" className="text-center p-4">
                     Loading...
                   </td>
                 </tr>
@@ -316,14 +372,6 @@ const Invoice = () => {
                     </td>
                     <td className="border p-2">
                       {invoice.Shop?.Tenant?.name || "N/A"}
-                    </td>
-                    <td className="border p-2">
-                      <button
-                        onClick={() => handleSendSingleEmail(invoice)}
-                        className="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                      >
-                        📧 Send Email
-                      </button>
                     </td>
                   </tr>
                 ))

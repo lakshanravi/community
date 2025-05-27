@@ -89,6 +89,7 @@
   },
   "contact": {
     "title": "Contact Us",
+    "description": "If you have any questions or suggestions, please feel free to reach out to us. We are here to assist you.",
     "breadcrumb": "Home > Contact Us",
     "talkToUs": "Talk to us",
     "subText": "Tell us your suggestions and allegations",
@@ -180,7 +181,8 @@
     "title": "Daily Product Prices",
     "searchPlaceholder": "🔍︎ Search Products",
     "downloadPdf": "Download PDF",
-    "noData": "No prices available for this date."
+    "noDatal1": "Daily price information is being updated.",
+    "noDatal2": "The information will be available once the update is complete."
   },
   "ui": {
     "title": "Daily Price Information",
@@ -195,8 +197,8 @@
     "tableHeaders": {
       "number": "#",
       "item": "Item",
-      "minPrice": "Min Price",
-      "maxPrice": "Max Price"
+      "minPrice": "Min Price(per kg)",
+      "maxPrice": "Max Price(per kg)"
     },
     "noPrices": "No daily prices to print.",
     "popupBlocked": "Popup blocked! Please allow popups for printing.",

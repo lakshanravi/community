@@ -4,6 +4,68 @@ import ConfirmWrapper from "../../components/ConfirmWrapper";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axiosInstance";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
+const exportVehicleTicketsExcel = async (tickets) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Vehicle Tickets");
+
+  worksheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Ref ID", key: "id", width: 12 },
+    { header: "Vehicle Number", key: "vehicleNumber", width: 18 },
+    { header: "Type", key: "vehicleType", width: 14 },
+    { header: "Price", key: "ticketPrice", width: 12 },
+    { header: "Time", key: "time", width: 20 },
+    { header: "By", key: "byWhom", width: 25 },
+  ];
+
+  worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF4CAF50" },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  tickets.forEach((ticket, idx) => {
+    worksheet.addRow({
+      index: idx + 1,
+      id: ticket.id,
+      vehicleNumber: ticket.vehicleNumber,
+      vehicleType: ticket.vehicleType,
+      ticketPrice: Number(ticket.ticketPrice).toFixed(2),
+      time: ticket.time,
+      byWhom: ticket.byWhom,
+    });
+  });
+
+  const total = tickets.reduce((sum, t) => sum + parseFloat(t.ticketPrice), 0);
+
+  // Add the total row
+  const totalRow = worksheet.addRow({
+    index: '', // Empty for index
+    id: 'Total', // "Total" in the leftmost cell
+    vehicleNumber: '',
+    vehicleType: '',
+    ticketPrice: total.toFixed(2), // Always two decimals
+    time: '',
+    byWhom: '',
+  });
+
+  // Make the total row bold for emphasis
+  totalRow.font = { bold: true };
+
+  // Set number format for the Price column (including the total row)
+  worksheet.getColumn('ticketPrice').numFmt = '0.00';
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `VehicleTickets_${new Date().toISOString()}.xlsx`);
+};
+
 
 const VehicleTickets = () => {
   const [tickets, setTickets] = useState([]);
@@ -240,7 +302,18 @@ const VehicleTickets = () => {
 
           {/* Ticket Table */}
           <div>
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Filtered Tickets</h3>
+            <div className="flex justify-between items-center mb-4">
+  <h3 className="text-xl font-semibold text-gray-700">Filtered Tickets</h3>
+  <button
+    onClick={() => exportVehicleTicketsExcel(filteredTickets)}
+    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition"
+    disabled={filteredTickets.length === 0}
+    title={filteredTickets.length === 0 ? "No tickets to export" : "Export tickets to Excel"}
+  >
+    Export to Excel
+  </button>
+</div>
+
             {loading ? (
               <p>Loading...</p>
             ) : (

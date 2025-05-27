@@ -196,7 +196,7 @@ if (paidComponents === totalComponents) {
 }
 
 // Utility to process unpaid invoices using existing shop balance
-async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
+async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId, invoiceDate = null) {
     const t = await sequelize.transaction();
     try {
         const invoices = await Invoice.findAll({
@@ -220,9 +220,9 @@ async function runInvoicePaymentProcessWithoutAddingToShopBalance(shopId) {
         }
 
         let remainingBalance = shopBalance.balance_amount;
-
+        const usedDate = invoiceDate || new Date();  // Use provided date or current date
         for (const invoice of invoices) {
-            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t, new Date());
+            remainingBalance = await processInvoicePayments(invoice, remainingBalance, t, usedDate);
             if (remainingBalance <= 0) break;
         }
 

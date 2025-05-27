@@ -132,7 +132,7 @@ async function generateInvoice(shop_id, monthYear,adminName = "System") {
 
     console.log(`✅ Invoice ${invoice.invoice_id} generated successfully.`);
     if (shopBalanceAmount  > 0) {
-      await runInvoicePaymentProcessWithoutAddingToShopBalance(shop_id);
+       await runInvoicePaymentProcessWithoutAddingToShopBalance(shop_id, invoiceDate);
     }
     return invoice;
 

@@ -36,7 +36,8 @@ const app = express();
 
 app.use(cors({ origin: "*", credentials: true }));
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 
 console.log("Loading environment variables...");
 console.log("Super Admin Email:", process.env.DEFAULT_SUPERADMIN_EMAIL);
@@ -107,3 +108,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(` Server running on port ${PORT}`);
 });
+

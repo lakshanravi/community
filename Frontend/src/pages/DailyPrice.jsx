@@ -8,6 +8,8 @@ import { Skeleton } from "../components/Skeleton";
 import DailyPriceCard from './DailyPriceCard';
 import Footer from '../components/Footer';
 import { printDailyPrices } from '../utils/printDailyPrice';
+import Lottie from 'lottie-react';
+import loadingAnim from "../assets/loadingAnim.json"; // Adjust the path as necessary
 
 const DailyPrice = () => {
   const { t } = useTranslation();
@@ -201,8 +203,11 @@ const DailyPrice = () => {
             ))}
           </div>
         ) : filteredPrices.length === 0 ? (
-          <div className="text-center text-gray-500">
-            {t("dailyPrices.noData", "No prices available for this date.")}
+          <div className="text-center text-gray-500 mt-20 mb-25.5">
+            <Lottie animationData={loadingAnim} loop className="w-30 h-30 mx-auto" />
+            {t("dailyPrices.noDatal1")}
+            <br />
+            {t("dailyPrices.noDatal2")}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
