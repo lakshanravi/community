@@ -77,7 +77,7 @@ async function processPayment(shopId, amountPaid, paymentMethod, paymentDate = n
                     shop_id: shopId,
                     status: ['Arrest', 'Unpaid', 'Partially Paid']
                 },
-                order: [['status', 'ASC'], ['createdAt', 'ASC']],
+                order: [['createdAt', 'ASC'],['status', 'ASC']],
                 transaction: t
             });
         }

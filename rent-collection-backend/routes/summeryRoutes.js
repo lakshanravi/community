@@ -90,7 +90,7 @@ const getMonthlyData = async (startDate, endDate) => {
             [Sequelize.fn('SUM', Sequelize.col('paid_amount')), 'total_rent_paid']
         ],
         where: {
-            generate_date: { [Op.between]: [startDate, endDate] }
+            createdAt: { [Op.between]: [startDate, endDate] }
         }
     });
 
@@ -100,7 +100,7 @@ const getMonthlyData = async (startDate, endDate) => {
             [Sequelize.fn('SUM', Sequelize.col('paid_amount')), 'total_vat_paid']
         ],
         where: {
-            generate_date: { [Op.between]: [startDate, endDate] }
+            createdAt: { [Op.between]: [startDate, endDate] }
         }
     });
 
@@ -110,7 +110,7 @@ const getMonthlyData = async (startDate, endDate) => {
             [Sequelize.fn('SUM', Sequelize.col('paid_amount')), 'total_fine_paid']
         ],
         where: {
-            generate_date: { [Op.between]: [startDate, endDate] }
+            createdAt: { [Op.between]: [startDate, endDate] }
         }
     });
 
@@ -120,7 +120,7 @@ const getMonthlyData = async (startDate, endDate) => {
             [Sequelize.fn('SUM', Sequelize.col('paid_amount')), 'total_operation_paid']
         ],
         where: {
-            generate_date: { [Op.between]: [startDate, endDate] }
+            createdAt: { [Op.between]: [startDate, endDate] }
         }
     });
 

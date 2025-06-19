@@ -195,7 +195,7 @@
     "manager": "Manager, Management Office, Dedicated Economic Center, Dambulla",
     "contact": "Tel: 066-2285181 / 066-2285448 | Email: dambulladec@gmail.com",
     "tableHeaders": {
-      "number": "#",
+      "number": "Item No.",
       "item": "Item",
       "minPrice": "Min Price(per kg)",
       "maxPrice": "Max Price(per kg)"

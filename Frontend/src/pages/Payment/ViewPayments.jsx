@@ -1,9 +1,9 @@
+import ExcelJS from "exceljs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../utils/axiosInstance";
 import ConfirmWrapper from "../../components/ConfirmWrapper";
-import ExcelJS from "exceljs";
 import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/axiosInstance";
 
 const ViewPayments = () => {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const ViewPayments = () => {
 
     // Set headers
     worksheet.columns = [
-      { header: "Payment ID", key: "payment_id", width: 15 },
+      
       { header: "Shop ID", key: "shop_id", width: 15 },
       { header: "Invoice ID", key: "invoice_id", width: 20 },
       { header: "Amount Paid (LKR)", key: "amount_paid", width: 20 },
@@ -94,7 +94,12 @@ const ViewPayments = () => {
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
     // Sort payments by shop_id
+    filteredPayments.forEach((payment) => {
+  payment.shop_id = payment.shop_id.toUpperCase();
+});
+
     filteredPayments.sort((a, b) => {
+
       if (a.shop_id < b.shop_id) return -1;
       if (a.shop_id > b.shop_id) return 1;
       return 0;
@@ -102,8 +107,9 @@ const ViewPayments = () => {
 
     // Add payment rows
     filteredPayments.forEach((payment) => {
+       
       worksheet.addRow({
-        payment_id: payment.payment_id,
+       
         shop_id: payment.shop_id,
         invoice_id: payment.invoice_id || "N/A",
         amount_paid: parseFloat(payment.amount_paid).toFixed(2),
@@ -118,7 +124,7 @@ const ViewPayments = () => {
     }, 0);
 
     const totalRow = worksheet.addRow({
-      payment_id: '',
+    
       shop_id: '',
       invoice_id: 'TOTAL',
       amount_paid: totalAmount.toFixed(2),
