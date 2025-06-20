@@ -54,7 +54,7 @@ const ContactInfoExtras = () => {
     />
     <div className="text-gray-800 text-center lg:text-left font-medium leading-relaxed">
       <p className="text-2xl font-semibold">Dambulla DEC</p>
-      <p className="text-base text-gray-600">Demonstration and Education Center</p>
+      <p className="text-base text-gray-600">Dambulla Dedicated Economic Center</p>
       <p className="text-base text-gray-600">Sri Lanka</p>
     </div>
   </div>

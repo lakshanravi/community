@@ -11,7 +11,7 @@ const router = express.Router();
 // Get all invoices with shop details and tenant information
 const { Op } = require('sequelize');
 const Payment = require('../models/Payment');
-router.get('/', authenticateUser, authorizeRole(['admin', 'superadmin']), async (req, res) => {
+router.get('/', authenticateUser, authorizeRole(['admin', 'superadmin','editor']), async (req, res) => {
     try {
         const invoices = await Invoice.findAll({
             include: [

@@ -76,7 +76,13 @@ router.get('/monthly-income', async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Monthly Income');
-
+    sheet.pageSetup = {
+  paperSize: 9, // 9 = A4
+  orientation: 'landscape', // or 'portrait' depending on layout
+  fitToPage: true,
+  fitToWidth: 1,
+  fitToHeight: 0 // 0 = use as many pages as needed vertically
+};
     sheet.columns = [
       { header: 'Shop ID', key: 'shop_id' },
       { header: 'Month', key: 'month' },
@@ -91,17 +97,18 @@ router.get('/monthly-income', async (req, res) => {
       { header: 'Total Amount', key: 'total_amount' },
       { header: 'Total Paid', key: 'total_paid' },
       { header: 'Remaining', key: 'remaining' },
-      { header: 'Shop Balance', key: 'shop_balance' },
+      { header: 'Extra Payment', key: 'extra_payment' }, // ✅ NEW
+    /*  { header: 'Shop Balance', key: 'shop_balance' },*/
       { header: 'Rent Paid This Month', key: 'rent_paid_this_month' },
       { header: 'Fine Paid This Month', key: 'fine_paid_this_month' },
       { header: 'Operation Fee Paid This Month', key: 'operation_paid_this_month' },
       { header: 'VAT Paid This Month', key: 'vat_paid_this_month' },
-      { header: 'Extra Payment', key: 'extra_payment' }, // ✅ NEW
-      { header: 'Other Arrears Paid', key: 'other_arrears_paid' },
-      { header: 'Other Month Rent Paid', key: 'other_rent_paid' },
+     /* { header: 'Other Arrears Paid', key: 'other_arrears_paid' },*/
+      { header: 'Total other months paid', key: 'total_other_months_paid' },
+     /* { header: 'Other Month Rent Paid', key: 'other_rent_paid' },
       { header: 'Other Month Fine Paid', key: 'other_fine_paid' },
       { header: 'Other Month Operation Fee Paid', key: 'other_operation_paid' },
-      { header: 'Other Month VAT Paid', key: 'other_vat_paid' },
+      { header: 'Other Month VAT Paid', key: 'other_vat_paid' },*/
       { header: 'Other Month Invoice IDs', key: 'other_invoice_ids' },
     ];
 
@@ -110,6 +117,7 @@ router.get('/monthly-income', async (req, res) => {
       rent_paid_this_month: 0,
       fine_paid_this_month: 0,
       operation_paid_this_month: 0,
+      total_other_months_paid: 0, // ✅ NEW
       vat_paid_this_month: 0,
       other_arrears_paid: 0, // ❌ This is missing in your current snippet
       other_rent_paid: 0,
@@ -128,6 +136,7 @@ router.get('/monthly-income', async (req, res) => {
       fines:0,
       previous_fines:0,
       fine_for_this_invoice:0,
+
        // ✅ Fix: add this line
     };
 
@@ -173,7 +182,7 @@ router.get('/monthly-income', async (req, res) => {
       const shop_balance = balanceByShop[shop_id] || 0;
       let adjusted_arrears = parseFloat(inv.total_arrears);
 
-
+let total_other_months_paid;
 
       let other_arrears_paid = 0; // ✅ Declare and initialize
       let effective_shop_balance = shop_balance; // Clone before potential modification
@@ -191,6 +200,21 @@ router.get('/monthly-income', async (req, res) => {
       }
       const absPreviousBalance = Math.max(0, parseFloat(inv.previous_balance));  // Take absolute value to ensure it's positive
       // Add negative shop_balance to total arrears
+let extra_payment= (paidForThisInvoice - inv.total_amount - (fineMap[shop_id]?.current || 0)) > 0
+  ? (paidForThisInvoice - inv.total_amount - (fineMap[shop_id]?.current || 0)).toFixed(2)
+  : 0;
+
+let rent = parseFloat(rentMap[shop_id]?.current || 0);
+let fine = parseFloat(fineMap[shop_id]?.current || 0);
+let op = parseFloat(opMap[shop_id]?.current || 0);
+let vat = parseFloat(vatMap[shop_id]?.current || 0);
+let paid = parseFloat(paidForThisInvoice);
+let prevBalanced = parseFloat(absPreviousBalance);
+let extra = parseFloat(extra_payment);
+
+ total_other_months_paid = paid - rent - fine - op - vat + prevBalanced - extra;
+total_other_months_paid = parseFloat(total_other_months_paid.toFixed(2));
+
 
       sheet.addRow({
         shop_id,
@@ -206,19 +230,19 @@ router.get('/monthly-income', async (req, res) => {
         total_amount: inv.total_amount,
         total_paid: paidForThisInvoice,
         remaining,
-        shop_balance,
+              extra_payment:  extra_payment,
+        /*shop_balance,*/
         rent_paid_this_month: rentMap[shop_id]?.current || 0,
         fine_paid_this_month: fineMap[shop_id]?.current || 0,
         operation_paid_this_month: opMap[shop_id]?.current || 0,
         vat_paid_this_month: vatMap[shop_id]?.current || 0,
-        extra_payment: (paidForThisInvoice - inv.total_amount - (fineMap[shop_id]?.current || 0)) > 0
-  ? (paidForThisInvoice - inv.total_amount - (fineMap[shop_id]?.current || 0)).toFixed(2)
-  : 0,
-        other_arrears_paid, // ✅ NEW
-        other_rent_paid: rentMap[shop_id]?.other || 0,
+  
+    /*    other_arrears_paid,*/
+        total_other_months_paid: total_other_months_paid || 0, // ✅ NEW
+      /*  other_rent_paid: rentMap[shop_id]?.other || 0,
         other_fine_paid: fineMap[shop_id]?.other || 0,
         other_operation_paid: opMap[shop_id]?.other || 0,
-        other_vat_paid: vatMap[shop_id]?.other || 0,
+        other_vat_paid: vatMap[shop_id]?.other || 0,*/
         other_invoice_ids: [
           ...(rentCross[shop_id] || []),
           ...(fineCross[shop_id] || []),
@@ -227,7 +251,7 @@ router.get('/monthly-income', async (req, res) => {
         ].join(', '),
       });
       totals.previous_balance += absPreviousBalance; // Add to the totals
-      totals.shop_balance += shop_balance;
+     /* totals.shop_balance += shop_balance;*/
       totals.rent_paid_this_month += rentMap[shop_id]?.current || 0;
       totals.fine_paid_this_month += fineMap[shop_id]?.current || 0;
       totals.operation_paid_this_month += opMap[shop_id]?.current || 0;
@@ -235,16 +259,17 @@ router.get('/monthly-income', async (req, res) => {
       totals.other_arrears_paid += other_arrears_paid;
       const extraPayment = (paidForThisInvoice - inv.total_amount - (fineMap[shop_id]?.current || 0));
       totals.extra_payment += extraPayment > 0 ? extraPayment : 0;
-      totals.other_rent_paid += rentMap[shop_id]?.other || 0;
+      totals.total_other_months_paid += total_other_months_paid || 0;
+   /*   totals.other_rent_paid += rentMap[shop_id]?.other || 0;
       totals.other_fine_paid += fineMap[shop_id]?.other || 0;
       totals.other_operation_paid += opMap[shop_id]?.other || 0;
-      totals.other_vat_paid += vatMap[shop_id]?.other || 0;
+      totals.other_vat_paid += vatMap[shop_id]?.other || 0;*/
       totals.total_paid += paidForThisInvoice;
       totals.remaining += remaining;
       totals.rent_amount += parseFloat(inv.rent_amount);
       totals.operation_fee += parseFloat(inv.operation_fee);
       totals.vat += parseFloat(inv.vat_amount);
-      totals.total_arrears += adjusted_arrears;
+    /*  totals.total_arrears += adjusted_arrears;*/
       totals.total_amount += parseFloat(inv.total_amount);
       totals.fines += parseFloat(inv.fines);
       totals.previous_fines += parseFloat(inv.previous_fines);
@@ -267,12 +292,13 @@ router.get('/monthly-income', async (req, res) => {
       vat_paid_this_month: totals.vat_paid_this_month,
       other_arrears_paid: totals.other_arrears_paid || 0,
       extra_payment: totals.extra_payment.toFixed(2),
+      total_other_months_paid: totals.total_other_months_paid || 0, // ✅ NEW
 // ✅ NEW // ✅ NEW
       other_rent_paid: totals.other_rent_paid,
       other_fine_paid: totals.other_fine_paid,
       other_operation_paid: totals.other_operation_paid,
       other_vat_paid: totals.other_vat_paid,
-      shop_balance: totals.shop_balance,
+      /*shop_balance: totals.shop_balance,*/
       total_paid: totals.total_paid,
       remaining: totals.remaining,
       rent_amount: totals.rent_amount,
@@ -285,6 +311,7 @@ router.get('/monthly-income', async (req, res) => {
       fine_for_this_invoice: totals.fine_for_this_invoice || 0,
 
     });
+sheet.getRow(1).font = { bold: true, size: 10 };
 
     totalRow.eachCell(cell => {
       cell.font = { bold: true };
@@ -311,21 +338,17 @@ router.get('/monthly-income', async (req, res) => {
     const valueRow = proofStartRow + 2;
     const resultRow = proofStartRow + 3;
     sheet.getCell(`A${formulaRow}`).value =
-    'Total Paid = Rent Paid (Current) + Fine Paid (Current) + Operation Fee Paid (Current) + VAT Paid (Current) + Other Rent Paid + Other Fine Paid + Other Operation Paid + Other VAT Paid + Other Arrears Paid + Extra Payment - previous balance';
+    'Total Paid = Rent Paid (Current) + Fine Paid (Current) + Operation Fee Paid (Current) + VAT Paid (Current) + Other month Paid + Extra Payment - previous balance';
 
     sheet.getCell(`A${valueRow}`).value =
-    `Total Paid = ${totals.rent_paid_this_month.toFixed(2)} + ${totals.fine_paid_this_month.toFixed(2)} + ${totals.operation_paid_this_month.toFixed(2)} + ${totals.vat_paid_this_month.toFixed(2)} + ${totals.other_rent_paid.toFixed(2)} + ${totals.other_fine_paid.toFixed(2)} + ${totals.other_operation_paid.toFixed(2)} + ${totals.other_vat_paid.toFixed(2)} + ${totals.other_arrears_paid.toFixed(2)} + ${totals.extra_payment.toFixed(2)} - ${totals.previous_balance.toFixed(2)}`;
+    `Total Paid = ${totals.rent_paid_this_month.toFixed(2)} + ${totals.fine_paid_this_month.toFixed(2)} + ${totals.operation_paid_this_month.toFixed(2)} + ${totals.vat_paid_this_month.toFixed(2)} + ${totals.total_other_months_paid}  + ${totals.extra_payment.toFixed(2)} - ${totals.previous_balance.toFixed(2)}`;
   
   const totalPaidFinal = 
   totals.rent_paid_this_month +
   totals.fine_paid_this_month +
   totals.operation_paid_this_month +
   totals.vat_paid_this_month +
-  totals.other_rent_paid +
-  totals.other_fine_paid +
-  totals.other_operation_paid +
-  totals.other_vat_paid +
-  totals.other_arrears_paid +
+  totals.total_other_months_paid +
   totals.extra_payment - totals.previous_balance;
 
     
@@ -340,7 +363,7 @@ router.get('/monthly-income', async (req, res) => {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=Monthly_Income_Report_${latestMonthStr}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=Monthly_full_Report_${latestMonthStr}.xlsx`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

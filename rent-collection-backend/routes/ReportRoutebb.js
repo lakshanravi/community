@@ -76,18 +76,25 @@ router.get('/monthly-income', async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Monthly Income');
+    sheet.pageSetup = {
+  paperSize: 9, // 9 = A4
+  orientation: 'landscape', // or 'portrait' depending on layout
+  fitToPage: true,
+  fitToWidth: 1,
+  fitToHeight: 0 // 0 = use as many pages as needed vertically
+};
 
-    sheet.columns = [
-      { header: 'Shop ID', key: 'shop_id' },
-      { header: 'Month', key: 'month' },
-      { header: 'This month remaining Rent Amount', key: 't_r_rent_amount' },
-      { header: 'This month remaining Operation Fee', key: 't_r_operation_fee' },
-      { header: 'This month remaining Operation VAT', key: 't_r_vat_amount' },
-      { header: 'This month remaining Fine', key: 't_r_fine_for_this_invoice' },
-      { header: 'Previous total remaining', key: 'p_t_arrest' }, // ✅ Add this
-      { header: 'total Remaining', key: 't_remaining' },
-      
-    ];
+sheet.columns = [
+  { header: 'Shop ID', key: 'shop_id' },
+  { header: 'Month', key: 'month' },
+  { header: 'This month remaining\nRent Amount', key: 't_r_rent_amount' },
+  { header: 'This month remaining\nOperation Fee', key: 't_r_operation_fee' },
+  { header: 'This month remaining\nVAT', key: 't_r_vat_amount' },
+  { header: 'This month remaining\nFine', key: 't_r_fine_for_this_invoice' },
+   { header: 'Total other month\nremaining', key: 't_o_remainng' },
+  { header: 'Total Remaining\n(without this month fine)', key: 'p_t_arrest' },
+  { header: 'Total Remaining', key: 't_remaining' },
+];
 
     const totals = {
       t_r_rent_amount:0,
@@ -95,6 +102,7 @@ router.get('/monthly-income', async (req, res) => {
       t_r_vat_amount:0,
       t_r_fine_for_this_invoice:0,
       p_t_arrest:0,
+      t_o_remainng:0, // ✅ Fix: add this line
       t_remaining:0,
 
        // ✅ Fix: add this line
@@ -138,28 +146,14 @@ router.get('/monthly-income', async (req, res) => {
 
 
       let remaining = parseFloat(inv.total_amount) - paidForThisInvoice;
-      remaining = Math.max(remaining, 0);
-      const shop_balance = balanceByShop[shop_id] || 0;
+     
       let adjusted_arrears = parseFloat(inv.total_arrears);
 
 
 
       let other_arrears_paid = 0; // ✅ Declare and initialize
-      let effective_shop_balance = shop_balance; // Clone before potential modification
 
-      if (prevBalance < 0) {
-        prevBalance = Math.abs(prevBalance);
-        adjusted_arrears += prevBalance;
 
-        if (effective_shop_balance > 0) {
-          effective_shop_balance = 0;
-        }
-      
-        let s_balance = Math.abs(effective_shop_balance);
-        other_arrears_paid = Math.max(prevBalance - s_balance, 0);
-
-      }
-      const absPreviousBalance = Math.max(0, parseFloat(inv.previous_balance));  // Take absolute value to ensure it's positive
       // Add negative shop_balance to total arrears
       // Calculate individual components first
       const t_r_rent_amount = parseFloat(inv.rent_amount || 0) - parseFloat(rentMap[shop_id]?.current || 0);
@@ -167,29 +161,16 @@ router.get('/monthly-income', async (req, res) => {
       const t_r_vat_amount = parseFloat(inv.vat_amount || 0) - parseFloat(vatMap[shop_id]?.current || 0);
       const t_r_fine_for_this_invoice = parseFloat(fineThisInvoice || 0) - parseFloat(fineMap[shop_id]?.current || 0);
       
-console.log(`\n--- Arrears Calculation for Shop ID: ${shop_id} ---`);
-console.log(`adjusted_arrears: ${adjusted_arrears}`);
-console.log(`inv.fines: ${inv.fines}`);
-console.log(`rentMap.other: ${rentMap[shop_id]?.other || 0}`);
-console.log(`vatMap.other: ${vatMap[shop_id]?.other || 0}`);
-console.log(`opMap.other: ${opMap[shop_id]?.other || 0}`);
-console.log(`fineMap.other: ${fineMap[shop_id]?.other || 0}`);
-console.log(`other_arrears_paid: ${other_arrears_paid}`);
 
-console.log(`Adjusted arrears: ${adjusted_arrears}`);
 
 // Adjusted arrears with negative shop balance added (if applicable)
-const p_t_arrest = 
-  parseFloat(adjusted_arrears || 0) +
-  parseFloat(inv.fines || 0) -
-  parseFloat(rentMap[shop_id]?.other || 0) -
-  parseFloat(vatMap[shop_id]?.other || 0) -
-  parseFloat(opMap[shop_id]?.other || 0) -
-  parseFloat(other_arrears_paid || 0) -
-  parseFloat(fineMap[shop_id]?.other || 0);
+if(remaining<0){ remaining = 0; } // Ensure remaining is not negative
+const p_t_arrest = remaining;
 
 // Total remaining amount to be paid
-const t_remaining = t_r_rent_amount + t_r_operation_fee + t_r_vat_amount + t_r_fine_for_this_invoice + p_t_arrest;
+const t_remaining =  p_t_arrest + t_r_fine_for_this_invoice || 0;
+let t_o_remainng =parseFloat(p_t_arrest - t_r_operation_fee - t_r_vat_amount - t_r_rent_amount) || 0;
+t_o_remainng = t_o_remainng.toFixed(2);  // this is string like "0.20"
 
 // Add row to sheet
 sheet.addRow({
@@ -201,6 +182,7 @@ sheet.addRow({
   t_r_fine_for_this_invoice,
   p_t_arrest,
   t_remaining,
+  t_o_remainng, // Add this to the row
 });
 
 
@@ -209,7 +191,8 @@ sheet.addRow({
       totals.t_r_vat_amount += t_r_vat_amount;
       totals.t_r_fine_for_this_invoice += t_r_fine_for_this_invoice;
       totals.p_t_arrest += p_t_arrest;
-      totals.t_remaining += t_remaining;
+      totals.t_remaining += parseFloat(t_remaining);
+      totals.t_o_remainng += parseFloat(t_o_remainng); // Add to the totals
     }
 
     sheet.getRow(1).eachCell(cell => {
@@ -227,6 +210,7 @@ sheet.addRow({
       t_r_fine_for_this_invoice:totals.t_r_fine_for_this_invoice,
       p_t_arrest:totals.p_t_arrest,
       t_remaining:totals.t_remaining,
+      t_o_remainng:totals.t_o_remainng, // Add to the totals
 
 
     });
@@ -243,14 +227,15 @@ sheet.addRow({
     });
 
     sheet.columns.forEach(column => {
-      column.width = Math.max(15, column.header.length + 5);
+      column.width = 25; // fixed width, or adjust based on your content
     });
 
-   
+   // Set page setup to fit to A4 size width when printing
+
 
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=Monthly_Income_Report_${latestMonthStr}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=Monthly_arrest_Report_${latestMonthStr}.xlsx`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

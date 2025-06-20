@@ -63,7 +63,7 @@ async function runFineApplication() {
 });*/
 
 // Schedule invoice generation at 00:00 on the 1st day of every month
-cron.schedule("0 0 1 * *", async () => {
+/*cron.schedule("0 0 1 * *", async () => {
   await generateMonthlyInvoices();
   console.log("📆 Monthly invoice cron job executed.");
 });

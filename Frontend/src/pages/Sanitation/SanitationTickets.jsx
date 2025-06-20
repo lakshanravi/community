@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { parse } from "date-fns";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import Sidebar from "../../components/Sidebar";
-import api from "../../utils/axiosInstance";
+import { useEffect, useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import ConfirmWrapper from "../../components/ConfirmWrapper";
+import Sidebar from "../../components/Sidebar";
+import api from "../../utils/axiosInstance";
 
 // Export to Excel function
 const exportSanitationTicketsExcel = async (tickets) => {
@@ -14,7 +15,7 @@ const exportSanitationTicketsExcel = async (tickets) => {
   worksheet.columns = [
     { header: "Ticket ID", key: "id", width: 15 },
     { header: "Price (Rs.)", key: "price", width: 15 },
-    { header: "Date", key: "date", width: 20 },
+    { header: "Date and Time", key: "createdAtSriLanka", width: 20 },
     { header: "Issued By", key: "byWhom", width: 30 },
   ];
 
@@ -27,14 +28,19 @@ const exportSanitationTicketsExcel = async (tickets) => {
     };
     cell.alignment = { vertical: "middle", horizontal: "center" };
   });
-
-  tickets.forEach((ticket) => {
+  const sortedTickets = [...tickets].sort((a, b) => {
+    const dateA = parse(a.createdAtSriLanka, "dd/MM/yyyy, HH:mm:ss", new Date());
+    const dateB = parse(b.createdAtSriLanka, "dd/MM/yyyy, HH:mm:ss", new Date());
+    return dateA - dateB;
+  });// Add sorted rows
+  sortedTickets.forEach((ticket) => {
     worksheet.addRow({
       id: ticket.id,
       price: ticket.price,
-      date: ticket.date,
+      createdAtSriLanka: ticket.createdAtSriLanka,
       byWhom: ticket.byWhom,
     });
+
   });
 
  // Calculate the total price, formatted to two decimals
@@ -43,8 +49,10 @@ const exportSanitationTicketsExcel = async (tickets) => {
   // Add the total row
   const totalRow = worksheet.addRow({
     id: 'Total',
-    price: total.toFixed(2), // Always two decimals
-    date: '',
+    price: total.toFixed(2),
+     // Always two decimals
+   
+    createdAtSriLanka: '',
     byWhom: '',
   });
 
@@ -82,16 +90,37 @@ const SanitationTickets = () => {
   }, [searchByWhom]);
 
   // Filter tickets by date range on the frontend
-  useEffect(() => {
-    let filtered = tickets;
-    if (fromDate) {
-      filtered = filtered.filter(ticket => ticket.date >= fromDate);
-    }
-    if (toDate) {
-      filtered = filtered.filter(ticket => ticket.date <= toDate);
-    }
-    setFilteredTickets(filtered);
-  }, [fromDate, toDate, tickets]);
+  
+
+
+
+useEffect(() => {
+  let filtered = tickets;
+
+  if (fromDate) {
+    const from = new Date(fromDate);
+    // Set beginning of day
+    from.setHours(0, 0, 0, 0);
+
+    filtered = filtered.filter(ticket => {
+      const ticketDate = parse(ticket.createdAtSriLanka, "dd/MM/yyyy, HH:mm:ss", new Date());
+      return ticketDate >= from;
+    });
+  }
+
+  if (toDate) {
+    const to = new Date(toDate);
+    // Set end of day to include everything from that date
+    to.setHours(23, 59, 59, 999);
+
+    filtered = filtered.filter(ticket => {
+      const ticketDate = parse(ticket.createdAtSriLanka, "dd/MM/yyyy, HH:mm:ss", new Date());
+      return ticketDate <= to;
+    });
+  }
+
+  setFilteredTickets(filtered);
+}, [fromDate, toDate, tickets]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -102,6 +131,7 @@ const SanitationTickets = () => {
 
       const res = await api.get(`/api/sanitation/by-date${query}`);
       const allTickets = res.data.tickets || [];
+      console.log("Fetched tickets:", allTickets);
       setTickets(allTickets);
       setFilteredTickets(allTickets); // Initial, before range filter
     } catch (err) {
@@ -120,6 +150,7 @@ const SanitationTickets = () => {
       const res = await api.get(`/api/sanitation/daily-income${query}`);
       const data = res.data[0];
       setDailyIncome(data || { totalIncome: 0, ticketCount: 0 });
+      console.log("Daily income fetched:", data);
     } catch (err) {
       console.error("Failed to fetch daily income:", err);
     }
@@ -344,7 +375,8 @@ const SanitationTickets = () => {
                   <tr>
                     <th className="p-3 text-left">ID</th>
                     <th className="p-3 text-left">Price</th>
-                    <th className="p-3 text-left">Date</th>
+                   
+                     <th className="p-3 text-left">Date and Time</th>
                     <th className="p-3 text-left">By Whom</th>
                     <th className="p-3 text-left">Actions</th>
                   </tr>
@@ -355,7 +387,8 @@ const SanitationTickets = () => {
                       <tr key={ticket.id} className="border-b hover:bg-gray-50">
                         <td className="p-3">{ticket.id}</td>
                         <td className="p-3">Rs. {ticket.price}</td>
-                        <td className="p-3">{ticket.date}</td>
+                        
+                        <td className="p-3">{ticket.createdAtSriLanka}</td>
                         <td className="p-3">{ticket.byWhom}</td>
                         <td className="p-3">
                           <ConfirmWrapper
